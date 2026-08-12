@@ -263,24 +263,14 @@ async function* streamModelTurn(
     workspaceId: conversation.workspaceId,
   })
 
+  // One item id per kind for the whole model call. The browser appends a new
+  // content block for every item id it has not seen (`ensureStreamingTextBlock`),
+  // so reopening an item mid-turn splits the answer into extra blocks. Reasoning
+  // models interleave `reasoning_content` and `content` freely, which made that
+  // churn visible as the reply flickering between thinking and text boxes.
   let textItemId: string | null = null
-  let textBuffer = ''
   let reasoningItemId: string | null = null
-  let reasoningBuffer = ''
   const toolCallsByIndex = new Map<number, LocalCopilotToolCall>()
-
-  const closeReasoning = function* (): Generator<CopilotSseEvent> {
-    if (reasoningItemId === null) return
-    yield reasoningItemDone(reasoningItemId, reasoningBuffer)
-    reasoningItemId = null
-    reasoningBuffer = ''
-  }
-
-  const closeText = function* (): Generator<CopilotSseEvent> {
-    if (textItemId === null) return
-    yield assistantItemDone(textItemId, textBuffer)
-    textItemId = null
-  }
 
   const deltas = streamLlm({
     provider: conversation.provider,
@@ -300,14 +290,10 @@ async function* streamModelTurn(
   for await (const delta of deltas) {
     switch (delta.type) {
       case 'reasoning': {
-        // Models emit reasoning before the answer; a reasoning chunk after text
-        // has started means a new block, so the open text item is finalized.
         if (reasoningItemId === null) {
-          yield* closeText()
           reasoningItemId = crypto.randomUUID()
           yield reasoningItemAdded(reasoningItemId)
         }
-        reasoningBuffer += delta.delta
         assistantReasoning += delta.delta
         yield reasoningTextDelta(reasoningItemId, delta.delta)
         break
@@ -315,12 +301,9 @@ async function* streamModelTurn(
 
       case 'text': {
         if (textItemId === null) {
-          yield* closeReasoning()
           textItemId = crypto.randomUUID()
-          textBuffer = ''
           yield assistantItemAdded(textItemId)
         }
-        textBuffer += delta.delta
         assistantText += delta.delta
         yield assistantTextDelta(textItemId, delta.delta)
         break
@@ -344,8 +327,12 @@ async function* streamModelTurn(
     }
   }
 
-  yield* closeReasoning()
-  yield* closeText()
+  if (reasoningItemId !== null) {
+    yield reasoningItemDone(reasoningItemId, assistantReasoning)
+  }
+  if (textItemId !== null) {
+    yield assistantItemDone(textItemId, assistantText)
+  }
 
   const toolCalls = [...toolCallsByIndex.values()].filter((toolCall) => toolCall.name.length > 0)
 
