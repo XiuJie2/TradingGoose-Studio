@@ -146,6 +146,7 @@ describe('Copilot mark-complete API', () => {
         message: 'ok',
       },
       signal: expect.any(AbortSignal),
+      userId: 'user-1',
     })
   })
 })

@@ -6,8 +6,6 @@ import {
   calculateCopilotReservationUsdFromEstimate,
   recordCopilotCompletionUsage,
 } from '@/lib/copilot/completion-usage-billing'
-import { COPILOT_RUNTIME_MODELS } from '@/lib/copilot/runtime-models'
-import { COPILOT_RUNTIME_PROVIDER_IDS } from '@/lib/copilot/runtime-provider'
 import { buildCopilotRuntimeProviderConfig } from '@/lib/copilot/runtime-provider.server'
 import {
   commitCopilotUsageReservation,
@@ -24,10 +22,10 @@ const logger = createLogger('CopilotUsageAPI')
 const ContextUsageRequestSchema = z.object({
   kind: z.literal('context'),
   conversationId: z.string(),
-  model: z.enum(COPILOT_RUNTIME_MODELS),
+  model: z.string().min(1),
   workflowId: z.string().optional(),
   workspaceId: z.string().optional(),
-  provider: z.enum(COPILOT_RUNTIME_PROVIDER_IDS).optional(),
+  provider: z.string().min(1).optional(),
 })
 
 const UsageEstimateSchema = z.object({

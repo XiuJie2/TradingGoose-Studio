@@ -35,8 +35,7 @@ import {
   type ReviewMessageInput,
   type ReviewTurnStatus,
 } from '@/lib/copilot/review-sessions/thread-history'
-import { COPILOT_RUNTIME_MODELS, DEFAULT_COPILOT_RUNTIME_MODEL } from '@/lib/copilot/runtime-models'
-import { COPILOT_RUNTIME_PROVIDER_IDS } from '@/lib/copilot/runtime-provider'
+import { DEFAULT_COPILOT_RUNTIME_MODEL } from '@/lib/copilot/runtime-models'
 import { buildCopilotRuntimeProviderConfig } from '@/lib/copilot/runtime-provider.server'
 import {
   COPILOT_RUNTIME_CONFIG_PLACEHOLDER,
@@ -696,11 +695,13 @@ const ChatMessageSchema = z.object({
   message: z.string().min(1, 'Message is required'),
   userMessageId: z.string().optional(), // ID from frontend for the user message
   reviewSessionId: z.string().optional(),
-  model: z.enum(COPILOT_RUNTIME_MODELS).optional().default(DEFAULT_COPILOT_RUNTIME_MODEL),
+  // Local mode serves whatever the operator's providers expose, so the model id
+  // cannot be a closed enum; the runtime rejects an unusable provider instead.
+  model: z.string().min(1).optional().default(DEFAULT_COPILOT_RUNTIME_MODEL),
   prefetch: z.boolean().optional(),
   stream: z.boolean().optional().default(true),
   fileAttachments: z.array(FileAttachmentSchema).optional(),
-  provider: z.enum(COPILOT_RUNTIME_PROVIDER_IDS).optional(),
+  provider: z.string().min(1).optional(),
   conversationId: z.string().optional(),
   workspaceId: z.string().optional(),
   contexts: z.array(ChatContextSchema).optional(),
@@ -878,6 +879,17 @@ export async function POST(req: NextRequest) {
       ...(agentContexts.length > 0 && { context: agentContexts }),
       ...(actualReviewSessionId ? { chatId: actualReviewSessionId } : {}),
       toolManifest: await getCopilotRuntimeToolManifest(),
+      // The local runtime keeps turn state in a cache that can expire or be lost
+      // on a restart, so it falls back to this. The hosted service owns its own
+      // conversation store and ignores the field.
+      ...(conversationHistory.length > 0
+        ? {
+            history: conversationHistory.map((entry) => ({
+              role: entry.role,
+              content: entry.content,
+            })),
+          }
+        : {}),
       ...(processedFileContents.length > 0 && { fileAttachments: processedFileContents }),
     }
 
