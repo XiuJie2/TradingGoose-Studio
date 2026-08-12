@@ -1,3 +1,4 @@
+import { parseCopilotRuntimeMode } from '@/lib/copilot/agent/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 import { resolveSystemServiceConfig, resolveSystemServiceSettingsConfig } from './service'
 
@@ -109,10 +110,10 @@ export const resolveAzureCommunicationEmailServiceConfig = createServiceResolver
   })
 )
 
-export const resolveCopilotApiServiceConfig = createServiceResolver(
-  'copilot_api',
-  readApiKeyAndBaseUrlConfig
-)
+export const resolveCopilotApiServiceConfig = createServiceResolver('copilot_api', (config) => ({
+  ...readApiKeyAndBaseUrlConfig(config),
+  mode: parseCopilotRuntimeMode(asString(config.mode)),
+}))
 
 export const resolveMarketApiServiceConfig = createServiceResolver(
   'market_api',

@@ -1,11 +1,11 @@
+import { resolveCopilotRuntimeProvider } from '@/lib/copilot/runtime-provider'
 import type { CopilotProviderConfig } from '@/lib/copilot/types'
 import { resolveCopilotApiServiceConfig } from '@/lib/system-services/runtime'
 import type { ProviderId } from '@/providers/ai/types'
-import { resolveCopilotRuntimeProvider } from '@/lib/copilot/runtime-provider'
 
 export async function buildCopilotRuntimeProviderConfig(params: {
   model: string
-  provider?: ProviderId
+  provider?: string
 }): Promise<{
   provider: ProviderId
   providerConfig: CopilotProviderConfig

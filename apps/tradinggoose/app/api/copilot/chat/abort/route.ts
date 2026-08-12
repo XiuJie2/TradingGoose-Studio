@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
     const response = await proxyCopilotRequest({
       endpoint: '/api/tools/abort-turn',
       signal: req.signal,
+      userId,
       body: {
         chatId: session.id,
         conversationId: conversationId ?? undefined,

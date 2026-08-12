@@ -1,17 +1,32 @@
 import { db } from '@tradinggoose/db'
 import { systemServiceValue } from '@tradinggoose/db/schema'
 import { and, eq } from 'drizzle-orm'
+import { getEnv } from '@/lib/env'
 import { createLogger } from '@/lib/logs/console/logger'
 import { decryptSecret, encryptSecret } from '@/lib/utils-server'
 import {
   getSystemServiceDefinition,
   getSystemServiceDefinitions,
-  type SystemServiceSettingFieldDefinition,
   isSystemServiceCredentialKey,
   isSystemServiceSettingKey,
+  type SystemServiceSettingFieldDefinition,
 } from './catalog'
 
 const logger = createLogger('SystemServicesService')
+
+/**
+ * Reads a catalog field's fallback environment variable. Blank values are
+ * treated as unset so an empty entry in a compose manifest does not shadow the
+ * catalog default.
+ */
+export function readFieldEnvValue(envVar: string | undefined): string | null {
+  if (!envVar) {
+    return null
+  }
+
+  const value = getEnv(envVar)?.trim()
+  return value ? value : null
+}
 
 type SystemServiceValueRecord = typeof systemServiceValue.$inferSelect
 type SystemServiceResolvedValue = string | number | boolean
@@ -96,7 +111,9 @@ async function resolveSystemServiceCredentials(serviceId: string): Promise<Recor
   const rows = await db
     .select()
     .from(systemServiceValue)
-    .where(and(eq(systemServiceValue.service, serviceId), eq(systemServiceValue.kind, 'credential')))
+    .where(
+      and(eq(systemServiceValue.service, serviceId), eq(systemServiceValue.kind, 'credential'))
+    )
 
   const resolvedEntries = await Promise.all(
     rows.map(async (row) => {
@@ -105,9 +122,22 @@ async function resolveSystemServiceCredentials(serviceId: string): Promise<Recor
     })
   )
 
-  return Object.fromEntries(
+  const resolved: Record<string, string> = Object.fromEntries(
     resolvedEntries.filter((entry): entry is readonly [string, string] => !!entry)
   )
+
+  for (const field of definition.credentialFields) {
+    if (resolved[field.key]) {
+      continue
+    }
+
+    const fromEnv = readFieldEnvValue(field.envVar)
+    if (fromEnv) {
+      resolved[field.key] = fromEnv
+    }
+  }
+
+  return resolved
 }
 
 async function resolveSystemServiceSettings(
@@ -128,6 +158,17 @@ async function resolveSystemServiceSettings(
   return Object.fromEntries(
     definition.settingFields.flatMap((field) => {
       const storedValue = rowsByKey.get(field.key)
+      // A blank row means the admin never filled the field in (or cleared it),
+      // so the environment still gets a chance before the catalog default.
+      if (storedValue !== undefined && storedValue.trim()) {
+        return [[field.key, parseSettingValue(field, storedValue)]]
+      }
+
+      const fromEnv = readFieldEnvValue(field.envVar)
+      if (fromEnv) {
+        return [[field.key, parseSettingValue(field, fromEnv)]]
+      }
+
       if (storedValue !== undefined) {
         return [[field.key, parseSettingValue(field, storedValue)]]
       }
@@ -200,7 +241,9 @@ export async function upsertSystemServiceConfig(input: {
         }
 
         if (credential.hasValue) {
-          const existing = existingRowsByCompositeKey.get(buildCompositeKey('credential', credential.key))
+          const existing = existingRowsByCompositeKey.get(
+            buildCompositeKey('credential', credential.key)
+          )
           if (existing?.value?.trim()) {
             return {
               id: existing.id,
@@ -372,9 +415,7 @@ function normalizeSettingInputValue(
   switch (field.type) {
     case 'boolean': {
       if (value !== 'true' && value !== 'false') {
-        throw new SystemServiceValidationError(
-          `Setting "${field.key}" must be "true" or "false"`
-        )
+        throw new SystemServiceValidationError(`Setting "${field.key}" must be "true" or "false"`)
       }
       return value
     }
@@ -408,7 +449,7 @@ function parseSettingValue(
       return storedValue === 'true'
     case 'number': {
       const parsed = Number(storedValue)
-      return Number.isFinite(parsed) ? parsed : field.defaultValue ?? 0
+      return Number.isFinite(parsed) ? parsed : (field.defaultValue ?? 0)
     }
     case 'text':
     case 'url':

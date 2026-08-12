@@ -1,4 +1,7 @@
-import { COPILOT_API_URL_DEFAULT } from '@/lib/copilot/agent/constants'
+import {
+  COPILOT_API_URL_DEFAULT,
+  COPILOT_RUNTIME_MODE_DEFAULT,
+} from '@/lib/copilot/agent/constants'
 import { MARKET_API_URL_DEFAULT } from '@/lib/market/client/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 
@@ -9,6 +12,12 @@ export interface SystemServiceCredentialFieldDefinition {
   label: string
   description: string
   required?: boolean
+  /**
+   * Environment variable consulted when this field has no stored value, so a
+   * deployment can be configured from a manifest instead of the admin UI.
+   * A stored value always wins.
+   */
+  envVar?: string
 }
 
 export interface SystemServiceSettingFieldDefinition {
@@ -18,6 +27,8 @@ export interface SystemServiceSettingFieldDefinition {
   type: SystemServiceSettingFieldType
   defaultValue?: string | number | boolean
   required?: boolean
+  /** See {@link SystemServiceCredentialFieldDefinition.envVar}. Beats `defaultValue`. */
+  envVar?: string
 }
 
 export interface SystemServiceDefinition {
@@ -341,21 +352,36 @@ export const SYSTEM_SERVICE_DEFINITIONS: SystemServiceDefinition[] = [
   {
     id: 'copilot_api',
     displayName: 'Copilot API',
-    description: 'Remote Copilot service endpoint and service authentication.',
+    description:
+      'How Copilot runs its model: locally on your own provider keys, or through the hosted TradingGoose service.',
     credentialFields: [
       {
         key: 'apiKey',
         label: 'API Key',
-        description: 'Used for TradingGoose-Copilot service authentication.',
+        description:
+          'Used for TradingGoose-Copilot service authentication. Only needed in "hosted" mode.',
+        required: false,
+        envVar: 'COPILOT_API_KEY',
       },
     ],
     settingFields: [
       {
+        key: 'mode',
+        label: 'Runtime Mode',
+        description:
+          'Set to "local" to run Copilot in this deployment using the model provider keys configured above (no Copilot API key needed), or "hosted" to call the managed TradingGoose Copilot service.',
+        type: 'text',
+        defaultValue: COPILOT_RUNTIME_MODE_DEFAULT,
+        envVar: 'COPILOT_RUNTIME_MODE',
+      },
+      {
         key: 'baseUrl',
         label: 'Base URL',
-        description: 'Base URL for the remote Copilot service.',
+        description: 'Base URL for the remote Copilot service. Only used in "hosted" mode.',
         type: 'url',
+        required: false,
         defaultValue: COPILOT_API_URL_DEFAULT,
+        envVar: 'COPILOT_API_URL',
       },
     ],
   },
@@ -393,6 +419,7 @@ export const SYSTEM_SERVICE_DEFINITIONS: SystemServiceDefinition[] = [
         description: 'OpenAI-compatible Ollama host URL.',
         type: 'url',
         defaultValue: 'http://localhost:11434',
+        envVar: 'OLLAMA_URL',
       },
     ],
   },

@@ -4,13 +4,17 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockListSystemServices, mockUpsertSystemServiceConfig } = vi.hoisted(() => ({
-  mockListSystemServices: vi.fn(),
-  mockUpsertSystemServiceConfig: vi.fn(),
-}))
+const { mockListSystemServices, mockReadFieldEnvValue, mockUpsertSystemServiceConfig } = vi.hoisted(
+  () => ({
+    mockListSystemServices: vi.fn(),
+    mockReadFieldEnvValue: vi.fn(),
+    mockUpsertSystemServiceConfig: vi.fn(),
+  })
+)
 
 vi.mock('@/lib/system-services/service', () => ({
   listSystemServices: (...args: any[]) => mockListSystemServices(...args),
+  readFieldEnvValue: (...args: any[]) => mockReadFieldEnvValue(...args),
   upsertSystemServiceConfig: (...args: any[]) => mockUpsertSystemServiceConfig(...args),
   SystemServiceValidationError: class SystemServiceValidationError extends Error {},
 }))
@@ -20,6 +24,33 @@ describe('admin system services', () => {
     vi.clearAllMocks()
     vi.resetModules()
     mockListSystemServices.mockResolvedValue([])
+    mockReadFieldEnvValue.mockReturnValue(null)
+  })
+
+  it('reports an env-supplied credential as configured and says where it came from', async () => {
+    mockReadFieldEnvValue.mockImplementation((envVar: string | undefined) =>
+      envVar === 'COPILOT_API_KEY' ? 'from-environment' : null
+    )
+
+    const { listAdminSystemServices } = await import('./system-services')
+    const snapshot = await listAdminSystemServices()
+
+    const copilot = snapshot.services.find((service) => service.id === 'copilot_api')
+    const apiKey = copilot?.credentials.find((credential) => credential.key === 'apiKey')
+
+    expect(apiKey).toMatchObject({ hasValue: true, managedByEnv: true })
+    expect(apiKey?.description).toContain('COPILOT_API_KEY')
+  })
+
+  it('mentions the env var as a fallback when nothing supplies a value', async () => {
+    const { listAdminSystemServices } = await import('./system-services')
+    const snapshot = await listAdminSystemServices()
+
+    const copilot = snapshot.services.find((service) => service.id === 'copilot_api')
+    const apiKey = copilot?.credentials.find((credential) => credential.key === 'apiKey')
+
+    expect(apiKey).toMatchObject({ hasValue: false, managedByEnv: false })
+    expect(apiKey?.description).toContain('Falls back to COPILOT_API_KEY')
   })
 
   it('marks optional Market API and Local Execution fields as non-blocking', async () => {

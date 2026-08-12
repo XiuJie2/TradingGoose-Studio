@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
       endpoint: '/api/tools/mark-complete',
       body: parsed,
       signal: upstreamAbortController.signal,
+      userId,
     })
 
     const contentType = agentRes.headers.get('content-type') || ''

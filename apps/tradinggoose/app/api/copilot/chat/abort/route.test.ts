@@ -84,6 +84,7 @@ describe('copilot chat abort route', () => {
     expect(mockProxyCopilotRequest).toHaveBeenCalledWith({
       endpoint: '/api/tools/abort-turn',
       signal: expect.any(AbortSignal),
+      userId: 'user-1',
       body: {
         chatId: 'review-session-1',
         conversationId: undefined,
@@ -141,6 +142,7 @@ describe('copilot chat abort route', () => {
     expect(mockProxyCopilotRequest).toHaveBeenCalledWith({
       endpoint: '/api/tools/abort-turn',
       signal: expect.any(AbortSignal),
+      userId: 'user-1',
       body: {
         chatId: 'review-session-1',
         conversationId: 'conversation-1',
