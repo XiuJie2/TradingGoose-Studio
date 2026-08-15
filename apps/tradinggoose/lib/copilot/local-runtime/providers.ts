@@ -1,4 +1,5 @@
 import {
+  resolveMinimaxServiceConfig,
   resolveNvidiaServiceConfig,
   resolveOllamaServiceConfig,
 } from '@/lib/system-services/runtime'
@@ -24,6 +25,7 @@ export const LOCAL_COPILOT_PROVIDERS = [
   'deepseek',
   'openrouter',
   'nvidia',
+  'minimax',
   'ollama',
   'xai',
   'mistral',
@@ -45,6 +47,10 @@ export async function resolveLocalCopilotBaseUrl(
 ): Promise<string | undefined> {
   if (provider === 'nvidia') {
     return (await resolveNvidiaServiceConfig()).baseUrl.replace(/\/$/, '')
+  }
+
+  if (provider === 'minimax') {
+    return (await resolveMinimaxServiceConfig()).baseUrl.replace(/\/$/, '')
   }
 
   if (provider === 'ollama') {

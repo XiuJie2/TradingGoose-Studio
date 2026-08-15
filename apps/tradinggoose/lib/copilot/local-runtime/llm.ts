@@ -91,6 +91,18 @@ function toOpenAiTools(
   }))
 }
 
+/**
+ * Non-standard body fields a gateway needs on top of the OpenAI schema.
+ *
+ * MiniMax's M2.x models cannot turn thinking off, and by default it comes back
+ * inside `content` wrapped in `<think>` tags — which would render as literal
+ * markup in the chat. `reasoning_split` moves it to `reasoning_content`, the
+ * field the delta loop below already reads.
+ */
+function providerExtraBody(provider: ProviderId): Record<string, unknown> {
+  return provider === 'minimax' ? { reasoning_split: true } : {}
+}
+
 async function* streamOpenAiCompatible(params: LlmStreamParams): AsyncGenerator<LlmStreamDelta> {
   const baseURL = await resolveLocalCopilotBaseUrl(params.provider)
   const client = new OpenAI({ apiKey: params.apiKey, ...(baseURL ? { baseURL } : {}) })
@@ -104,6 +116,7 @@ async function* streamOpenAiCompatible(params: LlmStreamParams): AsyncGenerator<
       // to cut an agent reply off mid-sentence. Known models resolve to their real
       // ceiling; dynamic ones fall back to the catalog's 4096.
       max_tokens: getMaxOutputTokensForModel(params.model),
+      ...providerExtraBody(params.provider),
       ...(params.tools.length > 0 ? { tools: toOpenAiTools(params.tools) } : {}),
     },
     { signal: params.signal }

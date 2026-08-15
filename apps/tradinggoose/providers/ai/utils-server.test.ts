@@ -6,6 +6,7 @@ const mockResolveAnthropicServiceConfig = vi.fn()
 const mockResolveDeepseekServiceConfig = vi.fn()
 const mockResolveOpenRouterServiceConfig = vi.fn()
 const mockResolveNvidiaServiceConfig = vi.fn()
+const mockResolveMinimaxServiceConfig = vi.fn()
 
 vi.mock('@/lib/system-services/runtime', () => ({
   resolveOpenAIServiceConfig: () => mockResolveOpenAIServiceConfig(),
@@ -13,6 +14,7 @@ vi.mock('@/lib/system-services/runtime', () => ({
   resolveDeepseekServiceConfig: () => mockResolveDeepseekServiceConfig(),
   resolveOpenRouterServiceConfig: () => mockResolveOpenRouterServiceConfig(),
   resolveNvidiaServiceConfig: () => mockResolveNvidiaServiceConfig(),
+  resolveMinimaxServiceConfig: () => mockResolveMinimaxServiceConfig(),
 }))
 
 describe('getApiKey system service fallback', () => {
@@ -33,12 +35,18 @@ describe('getApiKey system service fallback', () => {
       rotationKeys: [],
       baseUrl: 'https://integrate.api.nvidia.com/v1',
     })
+    mockResolveMinimaxServiceConfig.mockResolvedValue({
+      apiKey: 'system-minimax-key',
+      rotationKeys: [],
+      baseUrl: 'https://api.minimax.io/v1',
+    })
   })
 
   it.each([
     ['deepseek', 'deepseek-v4-flash', 'system-deepseek-key'],
     ['openrouter', 'openrouter/meta-llama/llama-3.3-70b-instruct', 'system-openrouter-key'],
     ['nvidia', 'nvidia/meta/llama-3.3-70b-instruct', 'system-nvidia-key'],
+    ['minimax', 'minimax/MiniMax-M2.7', 'system-minimax-key'],
   ])(
     'uses the admin-configured key for %s when no key is supplied',
     async (provider, model, expected) => {

@@ -100,12 +100,12 @@ describe('admin system services', () => {
     })
   })
 
-  it('exposes optional model-provider keys for DeepSeek, OpenRouter and NVIDIA', async () => {
+  it('exposes optional model-provider keys for DeepSeek, OpenRouter, NVIDIA and MiniMax', async () => {
     const { listAdminSystemServices } = await import('./system-services')
 
     const snapshot = await listAdminSystemServices()
 
-    for (const serviceId of ['deepseek', 'openrouter', 'nvidia']) {
+    for (const serviceId of ['deepseek', 'openrouter', 'nvidia', 'minimax']) {
       const service = snapshot.services.find((entry) => entry.id === serviceId)
       expect(service, `${serviceId} should be listed`).toBeDefined()
       expect(service?.credentials.find((credential) => credential.key === 'apiKey')).toMatchObject({
@@ -127,6 +127,13 @@ describe('admin system services', () => {
       required: false,
       hasValue: false,
       defaultValue: 'https://integrate.api.nvidia.com/v1',
+    })
+
+    const minimax = snapshot.services.find((service) => service.id === 'minimax')
+    expect(minimax?.settings.find((setting) => setting.key === 'baseUrl')).toMatchObject({
+      required: false,
+      hasValue: false,
+      defaultValue: 'https://api.minimax.io/v1',
     })
   })
 })

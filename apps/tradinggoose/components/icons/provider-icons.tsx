@@ -432,6 +432,17 @@ export function NvidiaIcon(props: SVGProps<SVGSVGElement>) {
     )
 }
 
+export function MinimaxIcon(props: SVGProps<SVGSVGElement>) {
+    return (
+        <svg {...props} viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'>
+            <path
+                d='M2 19V5h2.6l4.15 8.9L12.9 5h2.6v14h-2.1V8.85L9.6 17h-1.7L4.1 8.85V19zm16.05 0V5H22v14z'
+                fill='currentColor'
+            />
+        </svg>
+    )
+}
+
 export function BedrockIcon(props: SVGProps<SVGSVGElement>) {
     const id = useId()
     const gradientId = `bedrock_gradient_${id}`

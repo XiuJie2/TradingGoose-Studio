@@ -17,6 +17,7 @@ import {
   FireworksIcon,
   GeminiIcon,
   GroqIcon,
+  MinimaxIcon,
   MistralIcon,
   NvidiaIcon,
   OllamaIcon,
@@ -128,6 +129,139 @@ export const PROVIDER_DEFINITIONS: Record<string, ProviderDefinition> = {
     },
     contextInformationAvailable: false,
     models: [],
+  },
+  minimax: {
+    id: 'minimax',
+    name: 'MiniMax',
+    description: "MiniMax's M-series coding and agentic models",
+    defaultModel: 'MiniMax-M2.7',
+    // Ids are namespaced in the picker so `MiniMax-M2` cannot be confused with the
+    // same weights re-hosted by OpenRouter or NVIDIA.
+    modelPatterns: [/^minimax\//],
+    icon: MinimaxIcon,
+    color: '#F23F5D',
+    capabilities: {
+      temperature: { min: 0, max: 2 },
+      toolUsageControl: true,
+    },
+    models: [
+      {
+        id: 'MiniMax-M3',
+        pricing: {
+          input: 0.3,
+          cachedInput: 0.06,
+          output: 1.2,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 131072,
+        },
+        contextWindow: 1000000,
+      },
+      {
+        id: 'MiniMax-M2.7',
+        pricing: {
+          input: 0.3,
+          cachedInput: 0.06,
+          output: 1.2,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+        recommended: true,
+      },
+      {
+        id: 'MiniMax-M2.7-highspeed',
+        pricing: {
+          input: 0.6,
+          cachedInput: 0.06,
+          output: 2.4,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+        speedOptimized: true,
+      },
+      {
+        id: 'MiniMax-M2.5',
+        pricing: {
+          input: 0.3,
+          cachedInput: 0.03,
+          output: 1.2,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+      },
+      {
+        id: 'MiniMax-M2.5-highspeed',
+        pricing: {
+          input: 0.6,
+          cachedInput: 0.03,
+          output: 2.4,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+        speedOptimized: true,
+      },
+      {
+        id: 'MiniMax-M2.1',
+        pricing: {
+          input: 0.3,
+          cachedInput: 0.03,
+          output: 1.2,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+      },
+      {
+        id: 'MiniMax-M2.1-highspeed',
+        pricing: {
+          input: 0.6,
+          cachedInput: 0.03,
+          output: 2.4,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+        speedOptimized: true,
+      },
+      {
+        id: 'MiniMax-M2',
+        pricing: {
+          input: 0.3,
+          cachedInput: 0.03,
+          output: 1.2,
+          updatedAt: '2026-08-15',
+        },
+        capabilities: {
+          temperature: { min: 0, max: 2 },
+          maxOutputTokens: 65536,
+        },
+        contextWindow: 204800,
+      },
+    ],
   },
   vllm: {
     id: 'vllm',

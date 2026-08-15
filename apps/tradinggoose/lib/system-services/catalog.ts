@@ -3,6 +3,7 @@ import {
   COPILOT_RUNTIME_MODE_DEFAULT,
 } from '@/lib/copilot/agent/constants'
 import { MARKET_API_URL_DEFAULT } from '@/lib/market/client/constants'
+import { MINIMAX_API_BASE_URL_DEFAULT } from '@/providers/ai/minimax/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 
 export type SystemServiceSettingFieldType = 'text' | 'url' | 'number' | 'boolean'
@@ -227,6 +228,49 @@ export const SYSTEM_SERVICE_DEFINITIONS: SystemServiceDefinition[] = [
           'OpenAI-compatible base URL, including the version suffix. Point it at a self-hosted NIM to use your own deployment.',
         type: 'url',
         defaultValue: NVIDIA_API_BASE_URL_DEFAULT,
+        required: false,
+      },
+    ],
+  },
+  {
+    id: 'minimax',
+    displayName: 'MiniMax',
+    description:
+      'API key and endpoint for MiniMax M-series models over their OpenAI-compatible API.',
+    credentialFields: [
+      {
+        key: 'apiKey',
+        label: 'API Key',
+        description: 'MiniMax API key from platform.minimax.io, used for model requests.',
+        required: false,
+      },
+      {
+        key: 'rotationKey1',
+        label: 'Rotation Key 1',
+        description: 'MiniMax server key slot 1. Takes precedence over the single API Key above.',
+        required: false,
+      },
+      {
+        key: 'rotationKey2',
+        label: 'Rotation Key 2',
+        description: 'MiniMax server key slot 2.',
+        required: false,
+      },
+      {
+        key: 'rotationKey3',
+        label: 'Rotation Key 3',
+        description: 'MiniMax server key slot 3.',
+        required: false,
+      },
+    ],
+    settingFields: [
+      {
+        key: 'baseUrl',
+        label: 'Base URL',
+        description:
+          'OpenAI-compatible base URL, including the version suffix. Mainland-China accounts use https://api.minimaxi.com/v1 instead of the international default.',
+        type: 'url',
+        defaultValue: MINIMAX_API_BASE_URL_DEFAULT,
         required: false,
       },
     ],
