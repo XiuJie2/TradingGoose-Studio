@@ -15,6 +15,7 @@ const SYSTEM_SERVICE_KEY_PROVIDERS = new Set([
   'deepseek',
   'openrouter',
   'nvidia',
+  'minimax',
 ])
 
 type SystemServiceKeys = { rotationKeys: string[]; apiKey: string | null }
@@ -23,6 +24,7 @@ async function readSystemServiceKeys(provider: string): Promise<SystemServiceKey
   const {
     resolveAnthropicServiceConfig,
     resolveDeepseekServiceConfig,
+    resolveMinimaxServiceConfig,
     resolveNvidiaServiceConfig,
     resolveOpenAIServiceConfig,
     resolveOpenRouterServiceConfig,
@@ -39,6 +41,8 @@ async function readSystemServiceKeys(provider: string): Promise<SystemServiceKey
       return await resolveDeepseekServiceConfig()
     case 'openrouter':
       return await resolveOpenRouterServiceConfig()
+    case 'minimax':
+      return await resolveMinimaxServiceConfig()
     default:
       return await resolveNvidiaServiceConfig()
   }

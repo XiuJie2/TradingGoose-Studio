@@ -2,6 +2,7 @@ import { createLogger } from '@/lib/logs/console/logger'
 import {
   resolveAnthropicServiceConfig,
   resolveDeepseekServiceConfig,
+  resolveMinimaxServiceConfig,
   resolveNvidiaServiceConfig,
   resolveOllamaServiceConfig,
   resolveOpenAIServiceConfig,
@@ -99,12 +100,13 @@ async function listOllamaModels(baseUrl: string): Promise<string[]> {
  * in Admin > Services, with the dynamic providers listed live from their API.
  */
 export async function listLocalCopilotModelGroups(): Promise<CopilotModelGroup[]> {
-  const [openai, anthropic, deepseek, openrouter, nvidia, ollama] = await Promise.all([
+  const [openai, anthropic, deepseek, openrouter, nvidia, minimax, ollama] = await Promise.all([
     resolveOpenAIServiceConfig(),
     resolveAnthropicServiceConfig(),
     resolveDeepseekServiceConfig(),
     resolveOpenRouterServiceConfig(),
     resolveNvidiaServiceConfig(),
+    resolveMinimaxServiceConfig(),
     resolveOllamaServiceConfig(),
   ])
 
@@ -148,6 +150,17 @@ export async function listLocalCopilotModelGroups(): Promise<CopilotModelGroup[]
           prefix: 'nvidia/',
         })
       )
+    )
+  }
+
+  // MiniMax publishes a short, stable model list, so the static catalog is used
+  // rather than a `/models` round trip. That also keeps each id's real output
+  // ceiling, which a dynamically discovered id would not have.
+  const minimaxKey = minimax.rotationKeys[0] ?? minimax.apiKey
+  if (minimaxKey) {
+    push(
+      'minimax',
+      staticModels('minimax').map((model) => `minimax/${model}`)
     )
   }
 

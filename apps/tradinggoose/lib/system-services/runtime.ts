@@ -1,4 +1,5 @@
 import { parseCopilotRuntimeMode } from '@/lib/copilot/agent/constants'
+import { MINIMAX_API_BASE_URL_DEFAULT } from '@/providers/ai/minimax/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 import { resolveSystemServiceConfig, resolveSystemServiceSettingsConfig } from './service'
 
@@ -142,6 +143,12 @@ export const resolveNvidiaServiceConfig = createServiceResolver('nvidia', (confi
   apiKey: asString(config.apiKey),
   rotationKeys: readRotationKeys(config),
   baseUrl: asString(config.baseUrl) ?? NVIDIA_API_BASE_URL_DEFAULT,
+}))
+
+export const resolveMinimaxServiceConfig = createServiceResolver('minimax', (config) => ({
+  apiKey: asString(config.apiKey),
+  rotationKeys: readRotationKeys(config),
+  baseUrl: asString(config.baseUrl) ?? MINIMAX_API_BASE_URL_DEFAULT,
 }))
 
 export const resolveElevenLabsServiceConfig = createServiceResolver('elevenlabs', readApiKeyConfig)

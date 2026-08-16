@@ -16,6 +16,7 @@ export type ProviderId =
   | 'openrouter'
   | 'fireworks'
   | 'nvidia'
+  | 'minimax'
   | 'vllm'
   | 'bedrock'
 

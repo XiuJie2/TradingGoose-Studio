@@ -24,6 +24,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 vi.mock('@/lib/system-services/runtime', () => ({
   resolveNvidiaServiceConfig: async () => ({ baseUrl: 'https://integrate.api.nvidia.com/v1' }),
+  resolveMinimaxServiceConfig: async () => ({ baseUrl: 'https://api.minimax.io/v1' }),
   resolveOllamaServiceConfig: async () => ({ baseUrl: 'http://localhost:11434' }),
 }))
 
@@ -73,6 +74,47 @@ describe('local copilot llm adapters', () => {
     )
 
     expect(mockOpenAiCreate.mock.calls[0][0].model).toBe('meta/llama-3.3-70b-instruct')
+  })
+
+  it('asks MiniMax to split its thinking out of the answer', async () => {
+    const { streamLlm } = await import('./llm')
+
+    await drain(
+      streamLlm({
+        provider: 'minimax',
+        model: 'minimax/MiniMax-M2.7',
+        apiKey: 'k',
+        systemPrompt: 'sys',
+        messages: [{ role: 'user', content: 'hi' }],
+        tools: TOOLS,
+      })
+    )
+
+    const body = mockOpenAiCreate.mock.calls[0][0]
+    expect(body.model).toBe('MiniMax-M2.7')
+    // Thinking cannot be disabled on M2.x. Without this the reply arrives with
+    // `<think>...</think>` sitting in `content`, which renders as literal markup.
+    expect(body.reasoning_split).toBe(true)
+    // The catalog entry has to be found, otherwise the shared fallback would cap
+    // the reply at 4096 tokens.
+    expect(body.max_tokens).toBe(65536)
+  })
+
+  it('sends the MiniMax-only body field to nobody else', async () => {
+    const { streamLlm } = await import('./llm')
+
+    await drain(
+      streamLlm({
+        provider: 'deepseek',
+        model: 'deepseek-v4-flash',
+        apiKey: 'k',
+        systemPrompt: 'sys',
+        messages: [{ role: 'user', content: 'hi' }],
+        tools: TOOLS,
+      })
+    )
+
+    expect(mockOpenAiCreate.mock.calls[0][0]).not.toHaveProperty('reasoning_split')
   })
 
   it('maps tool calls and results onto the OpenAI chat shape', async () => {

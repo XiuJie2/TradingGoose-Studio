@@ -100,7 +100,7 @@ export async function runLocalCopilotTurn(
     return sseResponse(
       singleEvent(
         errorEvent(
-          `${provider} is not supported by the local Copilot runtime. Pick a model from OpenAI, Anthropic, DeepSeek, OpenRouter, NVIDIA or Ollama.`
+          `${provider} is not supported by the local Copilot runtime. Pick a model from OpenAI, Anthropic, DeepSeek, OpenRouter, NVIDIA, MiniMax or Ollama.`
         )
       )
     )

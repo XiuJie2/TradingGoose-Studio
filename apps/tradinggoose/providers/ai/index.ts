@@ -9,6 +9,7 @@ import { deepseekProvider } from '@/providers/ai/deepseek'
 import { fireworksProvider } from '@/providers/ai/fireworks'
 import { googleProvider } from '@/providers/ai/google'
 import { groqProvider } from '@/providers/ai/groq'
+import { minimaxProvider } from '@/providers/ai/minimax'
 import { mistralProvider } from '@/providers/ai/mistral'
 import { nvidiaProvider } from '@/providers/ai/nvidia'
 import { ollamaProvider } from '@/providers/ai/ollama'
@@ -42,6 +43,7 @@ const providers: Record<string, ProviderConfig> = {
   fireworks: fireworksProvider,
   openrouter: openRouterProvider,
   nvidia: nvidiaProvider,
+  minimax: minimaxProvider,
   ollama: ollamaProvider,
   vllm: vllmProvider,
 }
