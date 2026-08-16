@@ -43,8 +43,15 @@ async function readSystemServiceKeys(provider: string): Promise<SystemServiceKey
       return await resolveOpenRouterServiceConfig()
     case 'minimax':
       return await resolveMinimaxServiceConfig()
-    default:
+    case 'nvidia':
       return await resolveNvidiaServiceConfig()
+    // Unreachable while every id in SYSTEM_SERVICE_KEY_PROVIDERS has a case
+    // above, which is the point: NVIDIA used to sit here as the catch-all, so
+    // adding a provider to that set without a case here silently spent NVIDIA's
+    // key against a different vendor's endpoint. Failing to find a key is the
+    // safe outcome — the caller turns it into "API key is required for X".
+    default:
+      return { rotationKeys: [], apiKey: null }
   }
 }
 

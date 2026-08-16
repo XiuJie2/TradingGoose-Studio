@@ -21,7 +21,10 @@ import {
 } from '@/lib/copilot/local-runtime/events'
 import { streamLlm } from '@/lib/copilot/local-runtime/llm'
 import { buildLocalCopilotSystemPrompt } from '@/lib/copilot/local-runtime/prompt'
-import { isLocalCopilotProvider } from '@/lib/copilot/local-runtime/providers'
+import {
+  isLocalCopilotProvider,
+  listLocalCopilotProviderNames,
+} from '@/lib/copilot/local-runtime/providers'
 import type {
   LocalCopilotContext,
   LocalCopilotConversation,
@@ -100,7 +103,7 @@ export async function runLocalCopilotTurn(
     return sseResponse(
       singleEvent(
         errorEvent(
-          `${provider} is not supported by the local Copilot runtime. Pick a model from OpenAI, Anthropic, DeepSeek, OpenRouter, NVIDIA, MiniMax or Ollama.`
+          `${provider} is not supported by the local Copilot runtime. Pick a model from ${listLocalCopilotProviderNames()}.`
         )
       )
     )
