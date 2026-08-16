@@ -75,14 +75,16 @@ describe('local copilot runtime', () => {
       await runLocalCopilotTurn({ message: 'hi', userId: 'user-1', model: 'claude-sonnet-4.6' })
     )
 
+    // Items stay open for the whole turn and are finalized together at the end,
+    // so the browser never sees a second block for the same kind.
     expect(events.map((event) => event.type)).toEqual([
       'start',
       'response.output_item.added',
       'response.reasoning_text.delta',
-      'response.output_item.done',
       'response.output_item.added',
       'response.output_text.delta',
       'response.output_text.delta',
+      'response.output_item.done',
       'response.output_item.done',
       'response.completed',
     ])
@@ -93,6 +95,55 @@ describe('local copilot runtime', () => {
       role: 'assistant',
       content: [{ type: 'output_text', text: 'Hello world' }],
     })
+  })
+
+  it('keeps one item per kind when reasoning and text interleave', async () => {
+    // Reasoning models flip between `reasoning_content` and `content` mid-answer.
+    // The browser appends a fresh content block per unseen item id, so reopening
+    // an item here is what made the reply flicker between boxes.
+    mockStreamLlm.mockReturnValue(
+      deltaStream([
+        { type: 'reasoning', delta: 'weighing ' },
+        { type: 'text', delta: 'The ' },
+        { type: 'reasoning', delta: 'options' },
+        { type: 'text', delta: 'answer.' },
+        { type: 'reasoning', delta: '.' },
+      ])()
+    )
+
+    const { runLocalCopilotTurn } = await import('./runtime')
+    const events = await readEvents(
+      await runLocalCopilotTurn({ message: 'hi', userId: 'user-1', model: 'gpt-5.4' })
+    )
+
+    const added = events.filter((event) => event.type === 'response.output_item.added')
+    expect(added).toHaveLength(2)
+    expect(new Set(added.map((event) => event.item.id)).size).toBe(2)
+
+    const textId = added.find((event) => event.item.type === 'message')!.item.id
+    const reasoningId = added.find((event) => event.item.type === 'reasoning')!.item.id
+
+    // Every delta must address the item its kind opened with.
+    expect(
+      events
+        .filter((event) => event.type === 'response.output_text.delta')
+        .every((event) => event.item_id === textId)
+    ).toBe(true)
+    expect(
+      events
+        .filter((event) => event.type === 'response.reasoning_text.delta')
+        .every((event) => event.item_id === reasoningId)
+    ).toBe(true)
+
+    // And each item is finalized once, carrying the whole accumulated text.
+    const done = events.filter((event) => event.type === 'response.output_item.done')
+    expect(done).toHaveLength(2)
+    expect(done.find((event) => event.item.type === 'message')!.item.content).toEqual([
+      { type: 'output_text', text: 'The answer.' },
+    ])
+    expect(done.find((event) => event.item.type === 'reasoning')!.item.content).toEqual([
+      { type: 'reasoning_text', text: 'weighing options.' },
+    ])
   })
 
   it('parks the turn on tool calls instead of executing them', async () => {

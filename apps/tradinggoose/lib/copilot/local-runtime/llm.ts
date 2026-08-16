@@ -100,6 +100,10 @@ async function* streamOpenAiCompatible(params: LlmStreamParams): AsyncGenerator<
       model: stripProviderPrefix(params.provider, params.model),
       messages: toOpenAiMessages(params.systemPrompt, params.messages),
       stream: true,
+      // Left unset, gateways apply their own default — NVIDIA NIM's is low enough
+      // to cut an agent reply off mid-sentence. Known models resolve to their real
+      // ceiling; dynamic ones fall back to the catalog's 4096.
+      max_tokens: getMaxOutputTokensForModel(params.model),
       ...(params.tools.length > 0 ? { tools: toOpenAiTools(params.tools) } : {}),
     },
     { signal: params.signal }
