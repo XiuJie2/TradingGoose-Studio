@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { buildCopilotServerToolErrorResponse } from '@/lib/copilot/server-tool-errors'
 import { WatchlistDocumentError } from '@/lib/watchlists/validation'
+import { WorkflowRealtimeRequiredError } from '@/lib/workflows/db-helpers'
+import { SavedEntityRealtimeRequiredError } from '@/lib/yjs/entity-state'
+import { SocketServerBridgeError } from '@/lib/yjs/server/snapshot-bridge'
 import { createDashboardLayoutValidationError } from '@/widgets/layout-document'
 import { createWidgetConfigValidationError } from '@/widgets/widget-mutations'
 
@@ -115,6 +118,58 @@ describe('copilot server tool errors', () => {
     expect(response.body.error).not.toContain('corrupt')
     expect(variableResponse.status).toBe(422)
     expect(variableResponse.body.error).toContain('removedVariableIds')
+  })
+
+  // These construct the real error classes rather than stand-ins with a matching
+  // `name`, because `name` is exactly what the mapping keys off: importing the
+  // classes back into the source module would close an import cycle, so this is
+  // the only place a rename can be caught.
+  it('reports an unreachable realtime service as a retryable outage', () => {
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new WorkflowRealtimeRequiredError(new Error('fetch failed'))
+    )
+
+    expect(response).toEqual({
+      status: 503,
+      body: expect.objectContaining({
+        code: 'realtime_orchestration_unavailable',
+        retryable: true,
+      }),
+    })
+    // The cause has to survive: a bare "Server tool execution failed" is what
+    // made this indistinguishable from a quota or permission problem.
+    expect(response.body.error).toContain('fetch failed')
+    expect(response.body.hint).toContain('INTERNAL_SOCKET_URL')
+  })
+
+  it('maps saved-entity realtime failures onto the same outage payload', () => {
+    const response = buildCopilotServerToolErrorResponse(
+      'create_knowledge_base',
+      new SavedEntityRealtimeRequiredError()
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.body.code).toBe('realtime_orchestration_unavailable')
+    expect(response.body.retryable).toBe(true)
+  })
+
+  it('reports a rejected internal call as a non-retryable configuration fault', () => {
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new SocketServerBridgeError(403, JSON.stringify({ error: 'invalid internal secret' }))
+    )
+
+    // A 4xx means the socket server answered and refused. Retrying never clears
+    // a mismatched secret, so it must not be advertised as retryable.
+    expect(response).toEqual({
+      status: 403,
+      body: expect.objectContaining({
+        code: 'realtime_bridge_rejected',
+        retryable: false,
+      }),
+    })
+    expect(response.body.hint).toContain('INTERNAL_API_SECRET')
   })
 
   it('returns a structured 422 payload for tool argument schema failures', () => {

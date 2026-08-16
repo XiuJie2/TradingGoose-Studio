@@ -163,6 +163,51 @@ function buildEditWorkflowError(message: string): CopilotServerToolErrorResponse
   return null
 }
 
+/**
+ * Errors raised when the Yjs realtime bridge could not complete a write.
+ *
+ * These reach here as plain `Error` subclasses, so without this branch they fall
+ * through to the generic 500 — which is the worst possible outcome for them.
+ * `create_workflow` inserts its row, calls the socket server, and rolls the row
+ * back when that call fails, so the caller sees a mutation that silently did
+ * nothing and a `retryable: false` payload telling it not to try again. The
+ * cause is an operator-fixable infrastructure fault, so it is named here.
+ *
+ * Matched by `name` rather than `instanceof` because every class that carries
+ * one sits downstream of this module: `snapshot-bridge` and (via it)
+ * `db-helpers` both import `StructuredServerToolError` from this file, so
+ * importing them back would close an import cycle. The test builds the real
+ * errors and asserts this mapping, so a rename fails there rather than silently
+ * reverting these to the generic 500.
+ */
+const REALTIME_BRIDGE_ERROR_NAMES = new Set([
+  'WorkflowRealtimeRequiredError',
+  'SavedEntityRealtimeRequiredError',
+  'SocketServerBridgeError',
+])
+
+function buildRealtimeBridgeError(
+  message: string,
+  status: unknown
+): CopilotServerToolErrorResponse {
+  // A 4xx from the socket server means it answered and refused — almost always a
+  // mismatched internal secret. Retrying that forever never clears it, so it is
+  // reported as a configuration fault rather than a transient outage.
+  const rejectedStatus = typeof status === 'number' && status >= 400 && status < 500 ? status : null
+
+  return {
+    status: rejectedStatus ?? 503,
+    body: {
+      code: rejectedStatus ? 'realtime_bridge_rejected' : 'realtime_orchestration_unavailable',
+      error: `Workflow realtime orchestration failed: ${message}`,
+      hint: rejectedStatus
+        ? 'The realtime service rejected the internal call. Check that INTERNAL_API_SECRET is identical in the app and realtime services, then retry.'
+        : 'The realtime service did not complete the write, so the change was rolled back and nothing was saved. Check that the realtime service is running and reachable at INTERNAL_SOCKET_URL, then retry.',
+      retryable: !rejectedStatus,
+    },
+  }
+}
+
 export function buildCopilotServerToolErrorResponse(
   toolName: string | undefined,
   error: unknown
@@ -231,6 +276,10 @@ export function buildCopilotServerToolErrorResponse(
         retryable: true,
       },
     }
+  }
+
+  if (error instanceof Error && REALTIME_BRIDGE_ERROR_NAMES.has(error.name)) {
+    return buildRealtimeBridgeError(message, (error as { status?: unknown }).status)
   }
 
   return {
