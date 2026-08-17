@@ -10,6 +10,7 @@ const providerEndpoints: Record<ProviderName, string> = {
   vllm: '/api/providers/ai/vllm/models',
   fireworks: '/api/providers/ai/fireworks/models',
   openrouter: '/api/providers/ai/openrouter/models',
+  nvidia: '/api/providers/ai/nvidia/models',
 }
 
 async function fetchProviderModels(provider: ProviderName): Promise<string[]> {

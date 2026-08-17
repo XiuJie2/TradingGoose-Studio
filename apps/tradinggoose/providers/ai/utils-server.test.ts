@@ -88,6 +88,37 @@ describe('getApiKey system service fallback', () => {
     expect(mockResolveDeepseekServiceConfig).not.toHaveBeenCalled()
     expect(mockResolveOpenRouterServiceConfig).not.toHaveBeenCalled()
     expect(mockResolveNvidiaServiceConfig).not.toHaveBeenCalled()
+    expect(mockResolveMinimaxServiceConfig).not.toHaveBeenCalled()
+  })
+
+  // NVIDIA used to be the switch's catch-all, so any provider added to the
+  // central-key set without its own branch spent an NVIDIA key against a
+  // different vendor's endpoint. The mocks all return distinct keys, so a
+  // regression shows up as the wrong key rather than a missing one.
+  it.each([
+    ['minimax', 'minimax/MiniMax-M2.7', 'system-minimax-key', mockResolveNvidiaServiceConfig],
+    [
+      'nvidia',
+      'nvidia/meta/llama-3.3-70b-instruct',
+      'system-nvidia-key',
+      mockResolveMinimaxServiceConfig,
+    ],
+  ])(
+    'resolves the %s key from its own service, not a shared fallback',
+    async (provider, model, expected, otherResolver) => {
+      await expect(getApiKey(provider, model)).resolves.toBe(expected)
+      expect(otherResolver).not.toHaveBeenCalled()
+    }
+  )
+
+  it('reports a missing key for a central-key provider with no resolver branch', async () => {
+    // `groq` is not in SYSTEM_SERVICE_KEY_PROVIDERS, so it never reaches the
+    // switch — the assertion that matters is that nothing hands back a key
+    // belonging to another vendor.
+    await expect(getApiKey('groq', 'llama-3.3-70b-versatile')).rejects.toThrow(
+      'API key is required for groq llama-3.3-70b-versatile'
+    )
+    expect(mockResolveNvidiaServiceConfig).not.toHaveBeenCalled()
   })
 })
 

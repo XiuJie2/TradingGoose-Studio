@@ -3,6 +3,7 @@ import {
   resolveNvidiaServiceConfig,
   resolveOllamaServiceConfig,
 } from '@/lib/system-services/runtime'
+import { PROVIDER_DEFINITIONS } from '@/providers/ai/models'
 import type { ProviderId } from '@/providers/ai/types'
 
 /**
@@ -36,6 +37,18 @@ export type LocalCopilotProvider = (typeof LOCAL_COPILOT_PROVIDERS)[number]
 
 export function isLocalCopilotProvider(provider: string): provider is LocalCopilotProvider {
   return (LOCAL_COPILOT_PROVIDERS as readonly string[]).includes(provider)
+}
+
+/**
+ * Display names for the "pick a supported model" error. Derived rather than
+ * written out, because the hand-maintained sentence had already gone stale: it
+ * still omitted xAI, Mistral and Fireworks, telling operators a model they can
+ * actually run is unsupported.
+ */
+export function listLocalCopilotProviderNames(): string {
+  return LOCAL_COPILOT_PROVIDERS.map(
+    (provider) => PROVIDER_DEFINITIONS[provider]?.name ?? provider
+  ).join(', ')
 }
 
 /**
