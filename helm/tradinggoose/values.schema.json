@@ -118,6 +118,10 @@
               "type": "string",
               "description": "Optional realtime URL; defaults to http://localhost:3002 when unset"
             },
+            "INTERNAL_SOCKET_URL": {
+              "type": "string",
+              "description": "Optional server-to-server realtime URL; set when NEXT_PUBLIC_SOCKET_URL is a public or proxied URL that does not reach the realtime service"
+            },
             "NODE_ENV": {
               "type": "string",
               "enum": ["development", "test", "production"],

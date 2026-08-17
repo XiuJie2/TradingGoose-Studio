@@ -16,6 +16,7 @@ import {
   prepareToolsWithUsageControl,
   trackForcedToolUsage,
 } from '@/providers/ai/utils'
+import { getApiKey } from '@/providers/ai/utils-server'
 import { executeTool } from '@/tools'
 
 const logger = createLogger('MinimaxProvider')
@@ -53,10 +54,10 @@ export const minimaxProvider: ProviderConfig = {
     request: ProviderRequest
   ): Promise<ProviderResponse | StreamingExecution> => {
     const serviceConfig = await resolveMinimaxServiceConfig()
-    const apiKey = request.apiKey || serviceConfig.apiKey
-    if (!apiKey) {
-      throw new Error('API key is required for MiniMax')
-    }
+    // The resolver is still needed for the base URL, but the key comes from the
+    // shared helper so a rotation slot is honoured — Admin > Services documents
+    // those as taking precedence over the single key field.
+    const apiKey = await getApiKey('minimax', request.model, request.apiKey)
 
     const client = new OpenAI({
       apiKey,

@@ -15,6 +15,7 @@ import {
   prepareToolsWithUsageControl,
   trackForcedToolUsage,
 } from '@/providers/ai/utils'
+import { getApiKey } from '@/providers/ai/utils-server'
 import { executeTool } from '@/tools'
 
 const logger = createLogger('OpenRouterProvider')
@@ -30,12 +31,12 @@ export const openRouterProvider: ProviderConfig = {
   executeRequest: async (
     request: ProviderRequest
   ): Promise<ProviderResponse | StreamingExecution> => {
-    if (!request.apiKey) {
-      throw new Error('API key is required for OpenRouter')
-    }
+    // Resolved centrally so an admin-configured key — including a rotation slot —
+    // is honoured, rather than requiring every request to carry its own.
+    const apiKey = await getApiKey('openrouter', request.model, request.apiKey)
 
     const client = new OpenAI({
-      apiKey: request.apiKey,
+      apiKey,
       baseURL: 'https://openrouter.ai/api/v1',
     })
 
