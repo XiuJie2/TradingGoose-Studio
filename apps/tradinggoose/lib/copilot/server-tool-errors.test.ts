@@ -4,7 +4,10 @@ import { buildCopilotServerToolErrorResponse } from '@/lib/copilot/server-tool-e
 import { WatchlistDocumentError } from '@/lib/watchlists/validation'
 import { WorkflowRealtimeRequiredError } from '@/lib/workflows/db-helpers'
 import { SavedEntityRealtimeRequiredError } from '@/lib/yjs/entity-state'
-import { SocketServerBridgeError } from '@/lib/yjs/server/snapshot-bridge'
+import {
+  SocketServerBridgeError,
+  SocketServerNonJsonResponseError,
+} from '@/lib/yjs/server/snapshot-bridge'
 import { createDashboardLayoutValidationError } from '@/widgets/layout-document'
 import { createWidgetConfigValidationError } from '@/widgets/widget-mutations'
 
@@ -170,6 +173,70 @@ describe('copilot server tool errors', () => {
       }),
     })
     expect(response.body.hint).toContain('INTERNAL_API_SECRET')
+  })
+
+  // The fault this covers is a reverse proxy answering `/internal/*` with the
+  // app's own HTML shell: a 200 the bridge accepts and only `response.json()`
+  // rejects. Reporting it as an outage sent operators to check a service that
+  // was healthy the whole time.
+  const HTML_SHELL = '<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/>'
+
+  it('reports a non-JSON 2xx body as a misroute rather than an outage', () => {
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new SocketServerNonJsonResponseError(200, 'text/html; charset=utf-8', HTML_SHELL)
+    )
+
+    expect(response).toEqual({
+      status: 502,
+      body: expect.objectContaining({
+        code: 'realtime_bridge_misrouted',
+        // Retrying a misroute gets the same HTML every time.
+        retryable: false,
+      }),
+    })
+    expect(response.body.hint).toContain('INTERNAL_SOCKET_URL')
+    expect(response.body.hint).toContain('NEXT_PUBLIC_SOCKET_URL')
+  })
+
+  it('keeps the status, content type and body in the reported message', () => {
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new SocketServerNonJsonResponseError(200, 'text/html; charset=utf-8', HTML_SHELL)
+    )
+
+    // Each of these was absent from the bare SyntaxError this replaces, and each
+    // was needed to tell a misroute apart from a realtime outage.
+    expect(response.body.error).toContain('200')
+    expect(response.body.error).toContain('text/html')
+    expect(response.body.error).toContain('<!DOCTYPE html>')
+    expect(response.body.error).toContain('reached the Next.js app')
+  })
+
+  it('classifies the misroute through the wrapper the workflow tools actually throw', () => {
+    // create_workflow surfaces the bridge failure wrapped, and the wrapper keeps
+    // only the message — so this passes solely because the cause is preserved.
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new WorkflowRealtimeRequiredError(
+        new SocketServerNonJsonResponseError(200, 'text/html', HTML_SHELL)
+      )
+    )
+
+    expect(response.status).toBe(502)
+    expect(response.body.code).toBe('realtime_bridge_misrouted')
+  })
+
+  it('still reports a genuinely unreachable service as a retryable outage', () => {
+    // The misroute branch must not swallow the case it was carved out of.
+    const response = buildCopilotServerToolErrorResponse(
+      'create_workflow',
+      new WorkflowRealtimeRequiredError(new Error('fetch failed'))
+    )
+
+    expect(response.status).toBe(503)
+    expect(response.body.code).toBe('realtime_orchestration_unavailable')
+    expect(response.body.retryable).toBe(true)
   })
 
   it('returns a structured 422 payload for tool argument schema failures', () => {

@@ -98,7 +98,10 @@ export class WorkflowRealtimeRequiredError extends Error {
     super(
       cause instanceof Error
         ? cause.message
-        : 'Editable workflow realtime orchestration is required'
+        : 'Editable workflow realtime orchestration is required',
+      // Kept so the copilot error sanitizer can separate "realtime is down" from
+      // "the call reached the wrong service"; the message alone cannot carry that.
+      { cause }
     )
     this.name = 'WorkflowRealtimeRequiredError'
   }
