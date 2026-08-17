@@ -23,6 +23,12 @@ type DropdownMenuContentProps = MenuPrimitive.Popup.Props &
     | 'sideOffset'
   > & {
     container?: MenuPrimitive.Portal.Props['container']
+    /**
+     * Keeps the popup in the DOM where the menu is declared instead of sending it
+     * to `<body>`. It is still portalled — into a container rendered right here —
+     * because Base UI's `Menu.Positioner` throws when no `Menu.Portal` is above
+     * it, so skipping the portal outright breaks the menu on open.
+     */
     portal?: boolean
     zIndex?: number
   }
@@ -46,6 +52,10 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
     },
     ref
   ) => {
+    // State, not a ref: the portal target has to be a mounted node, and a ref
+    // assignment would not re-render to pick it up.
+    const [inlineContainer, setInlineContainer] = React.useState<HTMLDivElement | null>(null)
+
     const content = (
       <MenuPrimitive.Positioner
         align={align}
@@ -71,10 +81,23 @@ const DropdownMenuContent = React.forwardRef<HTMLDivElement, DropdownMenuContent
       </MenuPrimitive.Positioner>
     )
 
-    return portal ? (
-      <MenuPrimitive.Portal container={container}>{content}</MenuPrimitive.Portal>
-    ) : (
-      content
+    if (portal) {
+      return <MenuPrimitive.Portal container={container}>{content}</MenuPrimitive.Portal>
+    }
+
+    // `Menu.Positioner` reads a context only `Menu.Portal` provides and throws
+    // outright when it is absent, so rendering `content` bare here crashed the
+    // menu every time it opened. Portalling into an anchor rendered at this exact
+    // spot keeps the popup in the same place in the DOM while satisfying that
+    // requirement. The anchor is rendered first so its ref is set before the
+    // portal mounts; until then there is nothing to portal into.
+    return (
+      <>
+        <div ref={setInlineContainer} />
+        {inlineContainer ? (
+          <MenuPrimitive.Portal container={inlineContainer}>{content}</MenuPrimitive.Portal>
+        ) : null}
+      </>
     )
   }
 )
