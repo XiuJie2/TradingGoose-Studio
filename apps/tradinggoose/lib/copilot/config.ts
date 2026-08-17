@@ -9,6 +9,7 @@ const logger = createLogger('CopilotConfig')
  * Valid provider IDs for validation
  */
 const VALID_PROVIDER_IDS: readonly ProviderId[] = [
+  'minimax',
   'openai',
   'azure-openai',
   'anthropic',
@@ -88,15 +89,17 @@ function parseBooleanEnv(value: string | undefined): boolean | null {
 
 export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
   chat: {
-    defaultProvider: 'anthropic',
-    defaultModel: getProviderDefaultModel('anthropic'),
+    // This deployment runs Copilot on its own MiniMax key. Every field here is
+    // still overridable through COPILOT_* environment variables.
+    defaultProvider: 'minimax',
+    defaultModel: getProviderDefaultModel('minimax'),
     temperature: 0.1,
     maxTokens: 8192,
     systemPrompt: AGENT_MODE_SYSTEM_PROMPT,
   },
   rag: {
-    defaultProvider: 'anthropic',
-    defaultModel: getProviderDefaultModel('anthropic'),
+    defaultProvider: 'minimax',
+    defaultModel: getProviderDefaultModel('minimax'),
     temperature: 0.1,
     maxTokens: 2000,
     embeddingModel: 'text-embedding-3-small',
@@ -106,7 +109,7 @@ export const DEFAULT_COPILOT_CONFIG: CopilotConfig = {
   general: {
     streamingEnabled: true,
     maxConversationHistory: 10,
-    titleGenerationModel: 'claude-3-haiku-20240307',
+    titleGenerationModel: getProviderDefaultModel('minimax'),
   },
 }
 
