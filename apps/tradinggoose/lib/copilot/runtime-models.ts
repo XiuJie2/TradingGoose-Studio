@@ -16,7 +16,17 @@ export const HOSTED_COPILOT_RUNTIME_MODELS = [
  */
 export type CopilotRuntimeModel = string
 
-export const DEFAULT_COPILOT_RUNTIME_MODEL: CopilotRuntimeModel = 'claude-sonnet-4.6'
+/**
+ * Seeds a fresh chat before `/api/copilot/models` answers, and backs the model
+ * field on the chat route.
+ *
+ * This deployment runs Copilot on its own MiniMax key, so the seed is a MiniMax
+ * id rather than a hosted one. The picker replaces it as soon as the model list
+ * loads, and it moves a stored selection off any model this deployment cannot
+ * serve, so a deployment on the hosted service still lands on a usable model —
+ * it just shows this label for the first frame.
+ */
+export const DEFAULT_COPILOT_RUNTIME_MODEL: CopilotRuntimeModel = 'minimax/MiniMax-M2.7'
 
 export const COPILOT_RUNTIME_MODEL_OPTIONS: ReadonlyArray<{
   value: CopilotRuntimeModel
