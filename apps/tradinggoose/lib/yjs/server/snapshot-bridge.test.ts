@@ -220,3 +220,73 @@ describe('refreshEntityListSession', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3)
   })
 })
+
+describe('non-JSON bridge responses', () => {
+  // A reverse proxy fronting the public URL serves the Next.js app, which answers
+  // `/internal/*` with 200 and its HTML shell. The bridge accepts the 200 and only
+  // `response.json()` fails — previously as a bare SyntaxError that named neither
+  // the status, the content type, nor the body, which made a misroute look
+  // identical to the realtime service being down.
+  const htmlShell = () =>
+    new Response('<!DOCTYPE html><html lang="en"><head><title>App</title></head></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    })
+
+  it('reports a 200 HTML body as a misroute instead of a parse error', async () => {
+    mockFetch.mockResolvedValueOnce(htmlShell())
+    const { applyWorkflowPatchInSocketServer } = await import('./snapshot-bridge')
+
+    await expect(
+      applyWorkflowPatchInSocketServer('workflow-1', 'user-1', { variables: {} })
+    ).rejects.toMatchObject({
+      name: 'SocketServerNonJsonResponseError',
+      status: 200,
+      contentType: 'text/html; charset=utf-8',
+    })
+  })
+
+  it('keeps the evidence needed to tell a misroute from an outage', async () => {
+    mockFetch.mockResolvedValueOnce(htmlShell())
+    const { applyWorkflowPatchInSocketServer } = await import('./snapshot-bridge')
+
+    const error = await applyWorkflowPatchInSocketServer('workflow-1', 'user-1', {
+      variables: {},
+    }).then(
+      () => null,
+      (caught: Error) => caught
+    )
+
+    expect(error).not.toBeNull()
+    expect(error?.message).toContain('text/html')
+    expect(error?.message).toContain('<!DOCTYPE html>')
+    expect(error?.message).toContain('reached the Next.js app rather than the realtime service')
+  })
+
+  it('does not retry a misroute', async () => {
+    vi.useFakeTimers()
+    mockFetch.mockResolvedValue(htmlShell())
+    const { getYjsSnapshot } = await import('./snapshot-bridge')
+
+    // getYjsSnapshot budgets 3 attempts, but a proxy returns the same page every
+    // time, so retrying only delays the report by the full backoff.
+    const snapshot = expect(getYjsSnapshot('workflow-1')).rejects.toMatchObject({
+      name: 'SocketServerNonJsonResponseError',
+    })
+    await vi.runAllTimersAsync()
+
+    await snapshot
+    expect(mockFetch).toHaveBeenCalledOnce()
+  })
+
+  it('still accepts an empty body as success', async () => {
+    // apply-state callers discard the result; treating a 204-shaped reply as a
+    // failure would be a behaviour change rather than a fix.
+    mockFetch.mockResolvedValueOnce(new Response('', { status: 200 }))
+    const { applyWorkflowPatchInSocketServer } = await import('./snapshot-bridge')
+
+    await expect(
+      applyWorkflowPatchInSocketServer('workflow-1', 'user-1', { variables: {} })
+    ).resolves.toBeUndefined()
+  })
+})

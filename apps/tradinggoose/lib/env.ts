@@ -49,8 +49,44 @@ const getKubernetesRealtimeUrl = () => {
   return null
 }
 
-const getInternalRealtimeUrl = () =>
-  getKubernetesRealtimeUrl() || getEnv('NEXT_PUBLIC_SOCKET_URL')?.trim() || 'http://localhost:3002'
+let _warnedAboutPublicRealtimeFallback = false
+
+/**
+ * Server-to-server address of the realtime service.
+ *
+ * `NEXT_PUBLIC_SOCKET_URL` is the browser-facing URL. Behind a reverse proxy it
+ * resolves back to the Next.js app rather than the realtime service, and the app
+ * answers `/internal/*` with a 200 and its HTML shell instead of a 404 — so the
+ * bridge gets a "successful" response it cannot parse, and the real fault is
+ * invisible. Set `INTERNAL_SOCKET_URL` (e.g. `http://realtime:3002`) whenever the
+ * two differ; `docker-compose.prod.yml` already passes it.
+ *
+ * The public URL stays last in the chain so single-origin dev setups keep
+ * working, but falling back to it is warned about once, because in a split
+ * deployment it is always wrong.
+ */
+const getInternalRealtimeUrl = () => {
+  const internal = getEnv('INTERNAL_SOCKET_URL')?.trim()
+  if (internal) return internal
+
+  const kubernetes = getKubernetesRealtimeUrl()
+  if (kubernetes) return kubernetes
+
+  const publicUrl = getEnv('NEXT_PUBLIC_SOCKET_URL')?.trim()
+  if (!publicUrl) return 'http://localhost:3002'
+
+  if (!_warnedAboutPublicRealtimeFallback) {
+    _warnedAboutPublicRealtimeFallback = true
+    // Plain console: this module is imported by client bundles and by non-Next
+    // consumers, so it cannot depend on the app logger.
+    console.warn(
+      `[env] INTERNAL_SOCKET_URL is not set; internal realtime calls will use the browser-facing NEXT_PUBLIC_SOCKET_URL (${publicUrl}). ` +
+        'If that address is served by a reverse proxy in front of the app, those calls will hit the Next.js app instead of the realtime service.'
+    )
+  }
+
+  return publicUrl
+}
 
 // Wrap createEnv in a function so non-Next.js consumers (e.g. React Email preview)
 // get a safe fallback instead of a top-level crash.
@@ -70,6 +106,7 @@ function safeCreateEnv() {
     ENCRYPTION_KEY: z.string().min(32),                     // Key for encrypting sensitive data
     API_ENCRYPTION_KEY: z.string().regex(/^[a-fA-F0-9]{64}$/).optional(), // Required only when API-key access is used
     INTERNAL_API_SECRET: z.string().min(32),                     // Secret for internal API authentication
+    INTERNAL_SOCKET_URL: z.string().url().optional(),            // Server-to-server realtime URL; set when NEXT_PUBLIC_SOCKET_URL is public/proxied
 
     // Database & Storage
     REDIS_URL: z.string().url().optional(),            // Redis connection string for caching/sessions

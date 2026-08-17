@@ -60,6 +60,63 @@ export class SocketServerBridgeError extends Error {
   }
 }
 
+/**
+ * The socket server answered 2xx with something that is not JSON.
+ *
+ * This is almost never a realtime bug: it means the request reached a different
+ * service. A reverse proxy fronting the public URL serves the Next.js app, which
+ * answers `/internal/*` with 200 and its HTML shell, so the bridge sees a
+ * "successful" response and only `response.json()` fails — as a bare
+ * `SyntaxError` that names neither the status, the content type, nor the body.
+ * Carrying all three is what separates "realtime is down" from "you are talking
+ * to the wrong service".
+ */
+export class SocketServerNonJsonResponseError extends Error {
+  status: number
+  contentType: string | null
+  bodyPreview: string
+
+  constructor(status: number, contentType: string | null, body: string) {
+    super(describeNonJsonResponse(status, contentType, body))
+    this.name = 'SocketServerNonJsonResponseError'
+    this.status = status
+    this.contentType = contentType
+    this.bodyPreview = body.slice(0, 200)
+  }
+}
+
+function describeNonJsonResponse(status: number, contentType: string | null, body: string): string {
+  const looksLikeHtml = /^\s*<(!doctype|html)/i.test(body)
+  const where = looksLikeHtml
+    ? ' The HTML shell means the call reached the Next.js app rather than the realtime service.'
+    : ''
+  return (
+    `Realtime service returned ${status} with a non-JSON body ` +
+    `(content-type: ${contentType ?? 'none'}): ${JSON.stringify(body.slice(0, 120))}.${where}`
+  )
+}
+
+/**
+ * Reads a JSON body without discarding the evidence when it is not JSON.
+ *
+ * An empty body stays a success: `apply-state` callers ignore the result, and
+ * treating "204-shaped" replies as failures would be a behaviour change.
+ */
+async function decodeJsonResponse<T>(response: Response): Promise<T> {
+  const text = await response.text()
+  if (!text.trim()) return undefined as T
+
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new SocketServerNonJsonResponseError(
+      response.status,
+      response.headers.get('content-type'),
+      text
+    )
+  }
+}
+
 function readSocketServerErrorMessage(status: number, body: string): string {
   if (!body) return `Socket server bridge failed: ${status}`
   try {
@@ -129,7 +186,10 @@ async function fetchFromSocketServer<T = Response>(
           error.status !== 408 &&
           error.status !== 425 &&
           error.status !== 429
-        )
+        ) &&
+        // A misroute answers identically every time, so retrying only delays the
+        // report by the full backoff before failing anyway.
+        !(error instanceof SocketServerNonJsonResponseError)
       if (!canRetry) {
         throw error
       }
@@ -162,7 +222,7 @@ async function postJsonToSocketServer<T = unknown>(
     },
     options?.timeoutMs ?? options?.responseDeadlineMs ?? 10_000,
     options?.attempts,
-    (response) => response.json() as Promise<T>
+    decodeJsonResponse<T>
   )
 }
 
@@ -185,7 +245,7 @@ export async function getYjsSnapshot(
     { method: 'GET' },
     5000,
     3,
-    (response) => response.json() as Promise<YjsSnapshotResponse>
+    decodeJsonResponse<YjsSnapshotResponse>
   )
 }
 

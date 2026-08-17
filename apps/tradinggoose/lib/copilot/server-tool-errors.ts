@@ -184,12 +184,39 @@ const REALTIME_BRIDGE_ERROR_NAMES = new Set([
   'WorkflowRealtimeRequiredError',
   'SavedEntityRealtimeRequiredError',
   'SocketServerBridgeError',
+  'SocketServerNonJsonResponseError',
 ])
+
+const NON_JSON_BRIDGE_ERROR_NAME = 'SocketServerNonJsonResponseError'
+
+/** Matches the raw error or one wrapped by a `*RealtimeRequiredError`. */
+function isMisroutedBridgeError(error: Error): boolean {
+  if (error.name === NON_JSON_BRIDGE_ERROR_NAME) return true
+  const cause = (error as { cause?: unknown }).cause
+  return cause instanceof Error && cause.name === NON_JSON_BRIDGE_ERROR_NAME
+}
 
 function buildRealtimeBridgeError(
   message: string,
-  status: unknown
+  status: unknown,
+  misrouted: boolean
 ): CopilotServerToolErrorResponse {
+  // A 2xx body that is not JSON means something answered that is not the realtime
+  // service — a reverse proxy serving the app's HTML shell for `/internal/*`.
+  // Reporting that as an outage sends operators to check a service that is
+  // healthy, so it gets its own code and is never advertised as retryable.
+  if (misrouted) {
+    return {
+      status: 502,
+      body: {
+        code: 'realtime_bridge_misrouted',
+        error: `Workflow realtime orchestration failed: ${message}`,
+        hint: 'Internal realtime calls are reaching the wrong service. Set INTERNAL_SOCKET_URL to the realtime service address (e.g. http://realtime:3002); when it is unset the app falls back to the browser-facing NEXT_PUBLIC_SOCKET_URL, which a reverse proxy routes back to the app itself.',
+        retryable: false,
+      },
+    }
+  }
+
   // A 4xx from the socket server means it answered and refused — almost always a
   // mismatched internal secret. Retrying that forever never clears it, so it is
   // reported as a configuration fault rather than a transient outage.
@@ -279,7 +306,11 @@ export function buildCopilotServerToolErrorResponse(
   }
 
   if (error instanceof Error && REALTIME_BRIDGE_ERROR_NAMES.has(error.name)) {
-    return buildRealtimeBridgeError(message, (error as { status?: unknown }).status)
+    return buildRealtimeBridgeError(
+      message,
+      (error as { status?: unknown }).status,
+      isMisroutedBridgeError(error)
+    )
   }
 
   return {
