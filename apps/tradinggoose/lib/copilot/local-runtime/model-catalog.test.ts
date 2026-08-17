@@ -97,3 +97,85 @@ describe('local copilot model catalog', () => {
     expect(groups.find((group) => group.provider === 'minimax')?.models.length).toBeGreaterThan(0)
   })
 })
+
+describe('default model selection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.resetModules()
+    resolvers.openai.mockResolvedValue({ rotationKeys: ['openai-key'] })
+    resolvers.anthropic.mockResolvedValue({ rotationKeys: ['anthropic-key'] })
+    resolvers.deepseek.mockResolvedValue({ rotationKeys: [], apiKey: null })
+    resolvers.openrouter.mockResolvedValue({ rotationKeys: [], apiKey: null })
+    resolvers.nvidia.mockResolvedValue({
+      rotationKeys: [],
+      apiKey: null,
+      baseUrl: 'https://integrate.api.nvidia.com/v1',
+    })
+    resolvers.minimax.mockResolvedValue({
+      rotationKeys: [],
+      apiKey: 'minimax-key',
+      baseUrl: 'https://api.minimax.io/v1',
+    })
+    resolvers.ollama.mockResolvedValue({ baseUrl: 'http://localhost:11434' })
+  })
+
+  // `/api/copilot/models` reports `groups[0].models[0]` as the default and the
+  // picker seeds a fresh chat with it, so group order and in-group order are
+  // together the entire mechanism that decides the default model.
+  it('puts MiniMax first even when OpenAI and Anthropic have keys', async () => {
+    const { listLocalCopilotModelGroups } = await import('./model-catalog')
+
+    const groups = await listLocalCopilotModelGroups()
+
+    expect(groups[0]?.provider).toBe('minimax')
+  })
+
+  it('leads with the model the catalog nominates, not the first one listed', async () => {
+    const { listLocalCopilotModelGroups } = await import('./model-catalog')
+    const { PROVIDER_DEFINITIONS } = await import('@/providers/ai/models')
+
+    const groups = await listLocalCopilotModelGroups()
+    const minimax = groups.find((group) => group.provider === 'minimax')
+
+    // The catalog lists MiniMax-M3 first but nominates MiniMax-M2.7, so without
+    // the hoist the default would silently be whichever id sits at the top.
+    expect(minimax?.models[0]).toBe(`minimax/${PROVIDER_DEFINITIONS.minimax.defaultModel}`)
+    expect(minimax?.models[0]).toBe('minimax/MiniMax-M2.7')
+  })
+
+  it('keeps every other MiniMax model available', async () => {
+    const { listLocalCopilotModelGroups } = await import('./model-catalog')
+    const { PROVIDER_DEFINITIONS } = await import('@/providers/ai/models')
+
+    const groups = await listLocalCopilotModelGroups()
+    const minimax = groups.find((group) => group.provider === 'minimax')
+
+    // Hoisting reorders; it must not drop anything.
+    expect(minimax?.models).toHaveLength(PROVIDER_DEFINITIONS.minimax.models.length)
+    expect(new Set(minimax?.models)).toEqual(
+      new Set(PROVIDER_DEFINITIONS.minimax.models.map((model) => `minimax/${model.id}`))
+    )
+  })
+
+  it('still offers OpenAI and Anthropic, just not first', async () => {
+    const { listLocalCopilotModelGroups } = await import('./model-catalog')
+
+    const providers = (await listLocalCopilotModelGroups()).map((group) => group.provider)
+
+    expect(providers).toContain('openai')
+    expect(providers).toContain('anthropic')
+  })
+
+  it('falls back to the next provider when MiniMax has no key', async () => {
+    resolvers.minimax.mockResolvedValue({
+      rotationKeys: [],
+      apiKey: null,
+      baseUrl: 'https://api.minimax.io/v1',
+    })
+    const { listLocalCopilotModelGroups } = await import('./model-catalog')
+
+    const groups = await listLocalCopilotModelGroups()
+
+    expect(groups[0]?.provider).toBe('openai')
+  })
+})

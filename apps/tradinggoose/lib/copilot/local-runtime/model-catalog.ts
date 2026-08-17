@@ -40,6 +40,26 @@ async function cachedListing(key: string, load: () => Promise<string[]>): Promis
   }
 }
 
+/**
+ * Moves the provider's declared `defaultModel` to the front of its list.
+ *
+ * The picker seeds a fresh chat with `groups[0].models[0]`, so without this the
+ * default is whichever id happens to sit at the top of the catalog array rather
+ * than the one the catalog nominates — MiniMax declares `MiniMax-M2.7` but lists
+ * `MiniMax-M3` first. Ids are matched with an optional provider prefix because
+ * namespaced providers publish `minimax/MiniMax-M2.7` while the catalog stores
+ * the bare id.
+ */
+function withDeclaredDefaultFirst(provider: ProviderId, models: string[]): string[] {
+  const declared = PROVIDER_DEFINITIONS[provider]?.defaultModel
+  if (!declared) return models
+
+  const index = models.findIndex((model) => model === declared || model.endsWith(`/${declared}`))
+  if (index <= 0) return models
+
+  return [models[index]!, ...models.slice(0, index), ...models.slice(index + 1)]
+}
+
 function staticModels(providerId: ProviderId): string[] {
   return (PROVIDER_DEFINITIONS[providerId]?.models ?? [])
     .filter((model) => !model.deprecated)
@@ -117,8 +137,22 @@ export async function listLocalCopilotModelGroups(): Promise<CopilotModelGroup[]
     groups.push({
       provider,
       label: PROVIDER_DEFINITIONS[provider]?.name ?? provider,
-      models,
+      models: withDeclaredDefaultFirst(provider, models),
     })
+  }
+
+  // MiniMax first: `/api/copilot/models` seeds a fresh chat with
+  // `groups[0].models[0]`, so this ordering is what actually decides the default
+  // model in local mode. MiniMax publishes a short, stable model list, so the
+  // static catalog is used rather than a `/models` round trip. That also keeps
+  // each id's real output ceiling, which a dynamically discovered id would not
+  // have.
+  const minimaxKey = minimax.rotationKeys[0] ?? minimax.apiKey
+  if (minimaxKey) {
+    push(
+      'minimax',
+      staticModels('minimax').map((model) => `minimax/${model}`)
+    )
   }
 
   if (openai.rotationKeys.length > 0) {
@@ -150,17 +184,6 @@ export async function listLocalCopilotModelGroups(): Promise<CopilotModelGroup[]
           prefix: 'nvidia/',
         })
       )
-    )
-  }
-
-  // MiniMax publishes a short, stable model list, so the static catalog is used
-  // rather than a `/models` round trip. That also keeps each id's real output
-  // ceiling, which a dynamically discovered id would not have.
-  const minimaxKey = minimax.rotationKeys[0] ?? minimax.apiKey
-  if (minimaxKey) {
-    push(
-      'minimax',
-      staticModels('minimax').map((model) => `minimax/${model}`)
     )
   }
 

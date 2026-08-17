@@ -20,6 +20,27 @@ import { executeTool } from '@/tools'
 
 const logger = createLogger('MinimaxProvider')
 
+/**
+ * Resolves the id MiniMax's API expects.
+ *
+ * Two things have to be undone. Ids are namespaced in the Copilot picker
+ * (`minimax/MiniMax-M2.7`), and the workflow Agent block picker lowercases every
+ * id it offers — `getBaseModelProviders()` keys its map by `toLowerCase()`. That
+ * was harmless while every catalog id was already lowercase, but MiniMax ids are
+ * mixed-case and the API does not accept `minimax-m2.7`. Matching
+ * case-insensitively against the catalog restores the canonical spelling.
+ *
+ * An id the catalog does not know is passed through unchanged, so a model
+ * MiniMax ships after this release still works.
+ */
+function toCanonicalMinimaxModel(model: string): string {
+  const stripped = model.replace(/^minimax\//i, '')
+  const canonical = getProviderModels('minimax').find(
+    (id) => id.toLowerCase() === stripped.toLowerCase()
+  )
+  return canonical ?? stripped
+}
+
 export const minimaxProvider: ProviderConfig = {
   id: 'minimax',
   name: 'MiniMax',
@@ -42,9 +63,7 @@ export const minimaxProvider: ProviderConfig = {
       baseURL: serviceConfig.baseUrl.replace(/\/$/, ''),
     })
 
-    // Model ids are namespaced in the picker but sent upstream unprefixed, e.g.
-    // `minimax/MiniMax-M2.7` -> `MiniMax-M2.7`.
-    const apiModel = (request.model || '').replace(/^minimax\//, '')
+    const apiModel = toCanonicalMinimaxModel(request.model || '')
 
     logger.info('Preparing MiniMax request', {
       model: apiModel,

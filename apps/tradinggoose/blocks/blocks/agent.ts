@@ -212,8 +212,12 @@ Create a system prompt appropriately detailed for the request, using clear langu
       optionGroups: getAvailableModelGroups,
       value: () => {
         const allModels = getAvailableModels()
-        if (allModels.includes('gpt-4o')) return 'gpt-4o'
-        return allModels[0]
+        // This deployment defaults to MiniMax. `getBaseModelProviders()` keys its
+        // map by `toLowerCase()`, so the offered id is lowercase even though the
+        // catalog spells it `MiniMax-M2.7`; the provider maps it back before the
+        // request goes out.
+        const preferred = ['minimax-m2.7', 'gpt-4o']
+        return preferred.find((model) => allModels.includes(model)) ?? allModels[0]
       },
       options: getAvailableModelOptions,
     },
