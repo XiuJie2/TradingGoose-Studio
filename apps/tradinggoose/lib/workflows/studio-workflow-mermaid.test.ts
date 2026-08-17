@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyAutoLayout } from '@/lib/workflows/autolayout'
+import { buildWorkflowBlockMermaidShape } from '@/lib/workflows/block-mermaid-contract'
 import {
   parseGraphOnlyWorkflowMermaid,
   parseTgMermaidToWorkflow,
@@ -641,6 +642,79 @@ agentBlock(["Agent"])
 
     expect(() => parseTgMermaidToWorkflow(invalidDocument)).toThrow(
       'Workflow document edge metadata is inconsistent. Visible Mermaid connections and TG_EDGE payloads must resolve to the same logical workflow edges. missing visible connection lines for inputTrigger:source->agentBlock:target; expected visible lines like `inputTrigger --> agentBlock`.'
+    )
+  })
+})
+
+describe('graph-only Mermaid the copilot is taught to send', () => {
+  // The examples handed to the model by `get_blocks_metadata` used to be rendered
+  // with the canonical serializer, so every one of them carried TG_* comments and
+  // `enabled:` — both of which `edit_workflow` rejects outright. A model that
+  // followed the documentation was refused twice before it could guess the
+  // accepted shape. These assert the two are the same contract.
+  it.each(['schedule', 'function', 'api', 'agent', 'loop', 'parallel'])(
+    'accepts both documented examples for a %s block',
+    (blockType) => {
+      const { mermaidExamples } = buildWorkflowBlockMermaidShape({
+        blockType,
+        blockName: 'Example',
+      } as Parameters<typeof buildWorkflowBlockMermaidShape>[0])
+
+      for (const document of Object.values(mermaidExamples) as string[]) {
+        if (typeof document !== 'string') continue
+        expect(() => parseGraphOnlyWorkflowMermaid(document, {})).not.toThrow()
+      }
+    }
+  )
+
+  it.each([
+    ['canonical <br/>', '<br/>'],
+    ['bare <br>', '<br>'],
+    ['spaced <br />', '<br />'],
+    ['uppercase <BR/>', '<BR/>'],
+  ])('reads block labels written with %s', (_label, br) => {
+    // Serialization only ever writes `<br/>`, but Mermaid accepts the others and a
+    // model writing a graph by hand reaches for them. Matching one spelling meant
+    // the label collapsed to a single line, the `id:` was lost, and the failure
+    // surfaced as an error about the edge rather than the label.
+    const document = [
+      'flowchart TD',
+      `  n1["Schedule${br}id: s1${br}type: schedule"]`,
+      `  n2["Fetch${br}id: f1${br}type: function"]`,
+      '  n1 --> n2',
+    ].join('\n')
+
+    const parsed = parseGraphOnlyWorkflowMermaid(document, {})
+
+    expect(parsed.blocks.map((block) => block.blockId).sort()).toEqual(['f1', 's1'])
+    expect(parsed.blocks.map((block) => block.blockType).sort()).toEqual(['function', 'schedule'])
+    expect(parsed.edges).toEqual([expect.objectContaining({ source: 's1', target: 'f1' })])
+  })
+
+  it('blames the node, not the edge, when a label has no id', () => {
+    const document = [
+      'flowchart TD',
+      '  n1["just a caption"]',
+      '  n2["Fetch<br/>id: f1<br/>type: function"]',
+      '  n1 --> n2',
+    ].join('\n')
+
+    expect(() => parseGraphOnlyWorkflowMermaid(document, {})).toThrow(
+      /node "n1" is declared but its label has no `id:` line/
+    )
+  })
+
+  it('still reports a genuinely undeclared node against the edge', () => {
+    // The original message is right when the id was never declared at all;
+    // narrowing it must not swallow that case.
+    const document = [
+      'flowchart TD',
+      '  n2["Fetch<br/>id: f1<br/>type: function"]',
+      '  n9 --> n2',
+    ].join('\n')
+
+    expect(() => parseGraphOnlyWorkflowMermaid(document, {})).toThrow(
+      /edge "n9 --> n2" references unknown node id/
     )
   })
 })

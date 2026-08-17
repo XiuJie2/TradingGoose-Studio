@@ -1,6 +1,6 @@
 import type { Edge } from '@xyflow/react'
 import {
-  serializeWorkflowToTgMermaid,
+  serializeWorkflowToGraphMermaid,
   TG_BLOCK_PREFIX,
   TG_EDGE_PREFIX,
   TG_WORKFLOW_PREFIX,
@@ -262,8 +262,8 @@ function buildStandardWorkflowExamples(params: ExampleParams): WorkflowBlockMerm
   }
 
   return {
-    minimalDocument: serializeWorkflowToTgMermaid(minimalState),
-    connectedDocument: serializeWorkflowToTgMermaid(connectedState),
+    minimalDocument: serializeWorkflowToGraphMermaid(minimalState),
+    connectedDocument: serializeWorkflowToGraphMermaid(connectedState),
   }
 }
 
@@ -342,8 +342,8 @@ function buildConditionWorkflowExamples(params: ExampleParams): WorkflowBlockMer
   }
 
   return {
-    minimalDocument: serializeWorkflowToTgMermaid(minimalState),
-    connectedDocument: serializeWorkflowToTgMermaid(connectedState),
+    minimalDocument: serializeWorkflowToGraphMermaid(minimalState),
+    connectedDocument: serializeWorkflowToGraphMermaid(connectedState),
   }
 }
 
@@ -490,8 +490,8 @@ function buildContainerWorkflowExamples(
   }
 
   return {
-    minimalDocument: serializeWorkflowToTgMermaid(minimalState),
-    connectedDocument: serializeWorkflowToTgMermaid(connectedState),
+    minimalDocument: serializeWorkflowToGraphMermaid(minimalState),
+    connectedDocument: serializeWorkflowToGraphMermaid(connectedState),
   }
 }
 

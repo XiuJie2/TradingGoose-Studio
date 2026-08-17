@@ -101,10 +101,16 @@ function escapeMermaidLabel(value: string): string {
 }
 
 function unescapeMermaidLabel(value: string): string {
-  return value
-    .replace(/<br\/>/g, '\n')
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, '\\')
+  return (
+    value
+      // Serialization always writes `<br/>`, but a hand-written or model-written
+      // label may use any spelling Mermaid itself accepts. Matching only the
+      // canonical one collapsed the label into a single line, which silently lost
+      // the `id:` entry and surfaced much later as an error about an unrelated edge.
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+  )
 }
 
 function buildAliasMap(blockIds: string[]): Map<string, string> {
@@ -1003,6 +1009,10 @@ function parseVisibleWorkflowEdges(
   blocks: Record<string, BlockState>
 ): ParsedVisibleWorkflowEdges {
   const nodeRefs = new Map<string, VisibleNodeRef>()
+  // Rect nodes whose label carried no usable `id:`. They are still skipped, so
+  // decorative nodes keep working, but remembering them lets an edge that points
+  // at one blame the node instead of itself.
+  const unlabelledNodeIds = new Set<string>()
   const aliasToBlockId = new Map<string, string>()
   const preferredBlockNodeIds = new Map<string, string>()
   const knownBlockIds = Object.keys(blocks)
@@ -1146,6 +1156,10 @@ function parseVisibleWorkflowEdges(
           })
         }
       }
+
+      if (!nodeRefs.has(nodeId)) {
+        unlabelledNodeIds.add(nodeId)
+      }
       continue
     }
 
@@ -1174,6 +1188,17 @@ function parseVisibleWorkflowEdges(
     const sourceRef = nodeRefs.get(edgeMatch[1])
     const targetRef = nodeRefs.get(edgeMatch[3])
     if (!sourceRef || !targetRef) {
+      // A node declared with an unreadable label is by far the likelier cause than
+      // a genuinely undeclared id, and pointing at the edge sends the reader to a
+      // line that is perfectly correct.
+      const unlabelled = [edgeMatch[1], edgeMatch[3]].filter((id) => unlabelledNodeIds.has(id))
+      if (unlabelled.length > 0) {
+        throw new Error(
+          `Workflow graph Mermaid node ${unlabelled.map((id) => `"${id}"`).join(' and ')} ` +
+            'is declared but its label has no `id:` line, so it is not a block. ' +
+            'Every new block needs `id:` and `type:` lines inside the label, separated by `<br/>`.'
+        )
+      }
       throw new Error(
         `Workflow graph Mermaid edge "${edgeMatch[1]} --> ${edgeMatch[3]}" references unknown node id.`
       )
