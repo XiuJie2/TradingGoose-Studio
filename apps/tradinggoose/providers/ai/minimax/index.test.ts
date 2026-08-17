@@ -4,9 +4,10 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { mockCreate, mockResolveConfig } = vi.hoisted(() => ({
+const { mockCreate, mockResolveConfig, mockGetApiKey } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockResolveConfig: vi.fn(),
+  mockGetApiKey: vi.fn(),
 }))
 
 vi.mock('openai', () => ({
@@ -25,12 +26,20 @@ vi.mock('@/lib/logs/console/logger', () => ({
 
 vi.mock('@/tools', () => ({ executeTool: vi.fn() }))
 
+// The key now comes from the shared resolver rather than the service config, so
+// that a rotation slot is honoured the same way it is for every other provider.
+vi.mock('@/providers/ai/utils-server', () => ({
+  getApiKey: (...args: unknown[]) => mockGetApiKey(...args),
+}))
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockResolveConfig.mockResolvedValue({
     apiKey: 'minimax-key',
+    rotationKeys: [],
     baseUrl: 'https://api.minimax.io/v1',
   })
+  mockGetApiKey.mockResolvedValue('minimax-key')
   mockCreate.mockResolvedValue({
     choices: [{ message: { content: 'ok' } }],
     usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },

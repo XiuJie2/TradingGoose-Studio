@@ -205,3 +205,62 @@ describe('getApiKey rotation slots', () => {
     )
   })
 })
+
+describe('providers resolve their key through getApiKey', () => {
+  // Every provider with an admin-configurable key used to re-implement its own
+  // precedence, and they disagreed: deepseek and openrouter demanded a
+  // request-supplied key outright, while nvidia and minimax read only the single
+  // `apiKey` field and ignored the rotation slots that Admin > Services
+  // documents as taking precedence over it.
+  const providerSources = [
+    ['deepseek', 'deepseek-v4-flash'],
+    ['openrouter', 'openrouter/meta-llama/llama-3.3-70b-instruct'],
+    ['nvidia', 'nvidia/meta/llama-3.3-70b-instruct'],
+    ['minimax', 'minimax/MiniMax-M2.7'],
+  ] as const
+
+  const resolverFor: Record<string, ReturnType<typeof vi.fn>> = {
+    deepseek: mockResolveDeepseekServiceConfig,
+    openrouter: mockResolveOpenRouterServiceConfig,
+    nvidia: mockResolveNvidiaServiceConfig,
+    minimax: mockResolveMinimaxServiceConfig,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-17T10:00:00Z'))
+    mockResolveOpenAIServiceConfig.mockResolvedValue({ rotationKeys: [], defaultApiKey: null })
+    mockResolveAnthropicServiceConfig.mockResolvedValue({ rotationKeys: [] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it.each(providerSources)(
+    'uses a rotation slot for %s when no single key is set',
+    async (provider, model) => {
+      resolverFor[provider]!.mockResolvedValue({
+        apiKey: null,
+        rotationKeys: ['rotating-key'],
+        baseUrl: 'https://example.test/v1',
+      })
+
+      await expect(getApiKey(provider, model)).resolves.toBe('rotating-key')
+    }
+  )
+
+  it.each(providerSources)(
+    'prefers a rotation slot over the single key for %s',
+    async (provider, model) => {
+      resolverFor[provider]!.mockResolvedValue({
+        apiKey: 'single-key',
+        rotationKeys: ['rotating-key'],
+        baseUrl: 'https://example.test/v1',
+      })
+
+      await expect(getApiKey(provider, model)).resolves.toBe('rotating-key')
+    }
+  )
+})

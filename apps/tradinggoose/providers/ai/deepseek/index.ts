@@ -15,6 +15,7 @@ import {
   prepareToolsWithUsageControl,
   trackForcedToolUsage,
 } from '@/providers/ai/utils'
+import { getApiKey } from '@/providers/ai/utils-server'
 import { executeTool } from '@/tools'
 
 const logger = createLogger('DeepseekProvider')
@@ -30,9 +31,9 @@ export const deepseekProvider: ProviderConfig = {
   executeRequest: async (
     request: ProviderRequest
   ): Promise<ProviderResponse | StreamingExecution> => {
-    if (!request.apiKey) {
-      throw new Error('API key is required for Deepseek')
-    }
+    // Resolved centrally so an admin-configured key — including a rotation slot —
+    // is honoured, rather than requiring every request to carry its own.
+    const apiKey = await getApiKey('deepseek', request.model, request.apiKey)
 
     // Start execution timer for the entire provider execution
     const providerStartTime = Date.now()
@@ -41,7 +42,7 @@ export const deepseekProvider: ProviderConfig = {
     try {
       // Deepseek uses the OpenAI SDK with a custom baseURL
       const deepseek = new OpenAI({
-        apiKey: request.apiKey,
+        apiKey,
         baseURL: 'https://api.deepseek.com/v1',
       })
 
