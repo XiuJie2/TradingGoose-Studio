@@ -3379,6 +3379,7 @@
           "neo4j": "Neo4j",
           "notion": "Notion",
           "onedrive": "OneDrive",
+          "opencode": "OpenCode",
           "pinecone": "Pinecone",
           "pipedrive": "Pipedrive",
           "polymarket": "Polymarket",
@@ -3534,6 +3535,7 @@
           "neo4j": "连接到 Neo4j 图形数据库",
           "notion": "管理 Notion 页面",
           "onedrive": "创建、上传和列出文件",
+          "opencode": "在自托管的 OpenCode 智能体上运行提示词",
           "pinecone": "使用 Pinecone 向量数据库",
           "pipedrive": "与 Pipedrive CRM 交互",
           "polymarket": "从 Polymarket 访问预测市场数据",
@@ -3598,7 +3600,8 @@
           "stagehand_agent": "将 Stagehand Agent 集成到工作流中。可浏览网页并执行任务。",
           "evaluator": "这是一个核心工作流模块。使用可定制的评估指标和评分标准来评估内容质量。创建带有数值评分的客观评估框架，以衡量多个维度的性能。",
           "mcp": "将 MCP 集成到工作流中。可执行工作区仪表盘小部件中配置的 MCP 服务器中的工具。",
-          "workflow_input": "执行另一个子工作流，并将其变量映射到其输入表单触发器架构。有助于实现工作流的模块化。"
+          "workflow_input": "执行另一个子工作流，并将其变量映射到其输入表单触发器架构。有助于实现工作流的模块化。",
+          "opencode": "向 OpenCode 智能体服务器发送提示词，并在工作流中使用其回复。与普通聊天模型不同，OpenCode 智能体带有工具——它可以读取文件、抓取网页并在其主机上执行命令——因此适合需要主动获取信息的调研与分析。服务器地址和凭据在「管理 > 服务」中统一配置，无需在每个块中填写。"
         },
         "toolParameters": {
           "gmail": {
@@ -10841,6 +10844,25 @@
             "values": {
               "placeholder": "以 JSON 数组的数组形式输入值（例如 [[\"A1\",\"B1\"],[\"A2\",\"B2\"]]）或对象数组",
               "title": "值"
+            }
+          },
+          "opencode": {
+            "prompt": {
+              "title": "提示词",
+              "placeholder": "希望智能体做什么？"
+            },
+            "agent": {
+              "title": "智能体",
+              "description": "OpenCode 服务器上的智能体名称。"
+            },
+            "sessionId": {
+              "title": "会话 ID",
+              "placeholder": "留空则新建会话",
+              "description": "继续已有会话，让智能体保留上下文。"
+            },
+            "directory": {
+              "title": "工作目录",
+              "placeholder": "OpenCode 主机上的路径，例如 /home/user/project"
             }
           },
           "openai": {

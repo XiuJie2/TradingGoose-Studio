@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest'
-import { registry } from '@/blocks/registry'
+import { describe, expect, it, vi } from 'vitest'
 import {
   DRAW_ACTION_ICONS,
   DRAW_TOOL_ICONS,
@@ -25,14 +24,23 @@ function normalizeShape(value: unknown): unknown {
   return null
 }
 
-const toolbarVisibleBlockTypes = [
-  ...new Set(
-    Object.values(registry)
-      .filter((block) => !block.hideFromToolbar)
-      .map((block) => block.type)
-      .filter((type): type is string => typeof type === 'string')
-  ),
-].sort()
+/**
+ * vitest.setup.ts replaces `@/blocks/registry` with a handful of stub blocks that carry no
+ * `type`, so importing it here left the coverage check below iterating an empty list. Load the
+ * real registry: a registered block with no copy throws inside getLocalizedBlockMetadata, which
+ * takes down the whole workflow editor rather than falling back to the untranslated name.
+ */
+async function loadRegisteredBlockTypes(): Promise<string[]> {
+  const actual = await vi.importActual<typeof import('@/blocks/registry')>('@/blocks/registry')
+
+  return [
+    ...new Set(
+      Object.values(actual.registry)
+        .map((block) => block.type)
+        .filter((type): type is string => typeof type === 'string')
+    ),
+  ].sort()
+}
 
 describe('public copy', () => {
   it('loads translated locale files directly', () => {
@@ -443,22 +451,29 @@ describe('public copy', () => {
     expect(normalizeShape(zhWidgets.blockEditor)).toEqual(normalizeShape(enWidgets.blockEditor))
   })
 
-  it('covers toolbar-visible block names and descriptions in every locale', () => {
+  it('covers every registered block name and description in every locale', async () => {
+    const registeredBlockTypes = await loadRegisteredBlockTypes()
+
+    // Guards the guard: if the registry ever comes back stubbed, this list goes empty and every
+    // assertion below passes without checking anything.
+    expect(registeredBlockTypes.length).toBeGreaterThan(100)
+
     for (const locale of ['en', 'es', 'zh'] as const) {
       const blockEditor = getPublicCopy(locale).workspace.widgets.blockEditor
       const blockNames = blockEditor.blockNames as Partial<Record<string, string>>
       const blockDescriptions = blockEditor.blockDescriptions as Partial<Record<string, string>>
-      const missingNames = toolbarVisibleBlockTypes.filter(
+      const missingNames = registeredBlockTypes.filter(
         (type) => typeof blockNames[type] !== 'string'
       )
-      const missingDescriptions = toolbarVisibleBlockTypes.filter(
+      const missingDescriptions = registeredBlockTypes.filter(
         (type) => typeof blockDescriptions[type] !== 'string'
       )
 
       expect(missingNames).toEqual([])
       expect(missingDescriptions).toEqual([])
     }
-  })
+    // Importing every block module (and its icon) takes longer than the default 5s timeout.
+  }, 60_000)
 
   it('includes localized monitor trigger override and portfolio block metadata copy', () => {
     const enBlockEditor = getPublicCopy('en').workspace.widgets.blockEditor

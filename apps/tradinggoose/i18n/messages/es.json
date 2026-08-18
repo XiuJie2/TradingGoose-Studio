@@ -3392,6 +3392,7 @@
           "neo4j": "Neo4j",
           "notion": "Notion",
           "onedrive": "OneDrive",
+          "opencode": "OpenCode",
           "pinecone": "Pinecone",
           "pipedrive": "Pipedrive",
           "polymarket": "Polymarket",
@@ -3547,6 +3548,7 @@
           "neo4j": "Conectar a base de datos de grafos Neo4j",
           "notion": "Gestionar páginas de Notion",
           "onedrive": "Crear, subir y listar archivos",
+          "opencode": "Ejecutar un prompt en un agente OpenCode autoalojado",
           "pinecone": "Usar la base de datos vectorial Pinecone",
           "pipedrive": "Interactuar con CRM de Pipedrive",
           "polymarket": "Acceder a datos de mercados de predicción de Polymarket",
@@ -3611,7 +3613,8 @@
           "stagehand_agent": "Integra Stagehand Agent en el flujo de trabajo. Puede navegar por la web y realizar tareas.",
           "evaluator": "Este es un bloque central del flujo de trabajo. Evalúa la calidad del contenido usando métricas de evaluación personalizables y criterios de puntuación. Crea marcos de evaluación objetivos con puntuaciones numéricas para medir el rendimiento en múltiples dimensiones.",
           "mcp": "Integra MCP en el flujo de trabajo. Puede ejecutar herramientas de servidores MCP configurados en los widgets del panel del espacio de trabajo.",
-          "workflow_input": "Ejecuta otro flujo de trabajo hijo y asigna variables a su esquema de activación de formulario de entrada. Ayuda a modularizar los flujos de trabajo."
+          "workflow_input": "Ejecuta otro flujo de trabajo hijo y asigna variables a su esquema de activación de formulario de entrada. Ayuda a modularizar los flujos de trabajo.",
+          "opencode": "Envía un prompt a un servidor de agentes OpenCode y usa su respuesta en el flujo de trabajo. A diferencia de un modelo de chat normal, un agente OpenCode tiene herramientas: puede leer archivos, consultar páginas y ejecutar comandos en su host, por lo que sirve para investigación y análisis que requieren ir a buscar información. La dirección del servidor y las credenciales se configuran una sola vez en Admin > Servicios, no en cada bloque."
         },
         "toolParameters": {
           "gmail": {
@@ -10854,6 +10857,25 @@
             "values": {
               "placeholder": "Introduce valores como un arreglo JSON de arreglos (p. ej., [[\"A1\",\"B1\"],[\"A2\",\"B2\"]]) o como un arreglo de objetos",
               "title": "Valores"
+            }
+          },
+          "opencode": {
+            "prompt": {
+              "title": "Prompt",
+              "placeholder": "¿Qué debe hacer el agente?"
+            },
+            "agent": {
+              "title": "Agente",
+              "description": "Nombre del agente en el servidor OpenCode."
+            },
+            "sessionId": {
+              "title": "ID de sesión",
+              "placeholder": "Déjalo vacío para iniciar una sesión nueva",
+              "description": "Continúa una sesión existente para que el agente conserve su contexto."
+            },
+            "directory": {
+              "title": "Directorio de trabajo",
+              "placeholder": "Ruta en el host de OpenCode, p. ej. /home/user/project"
             }
           },
           "openai": {
