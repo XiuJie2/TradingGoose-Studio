@@ -74,6 +74,7 @@ import { NoteBlock } from '@/blocks/blocks/note'
 import { NotionBlock } from '@/blocks/blocks/notion'
 import { OneDriveBlock } from '@/blocks/blocks/onedrive'
 import { OpenAIBlock } from '@/blocks/blocks/openai'
+import { OpenCodeBlock } from '@/blocks/blocks/opencode'
 import { OutlookBlock } from '@/blocks/blocks/outlook'
 import { ParallelBlock } from '@/blocks/blocks/parallel'
 import { PerplexityBlock } from '@/blocks/blocks/perplexity'
@@ -203,6 +204,7 @@ export const registry: Record<string, BlockConfig> = {
   onedrive: OneDriveBlock,
   parallel_ai: ParallelBlock,
   portfolio_state_trigger: PortfolioStateTriggerBlock,
+  opencode: OpenCodeBlock,
   perplexity: PerplexityBlock,
   pinecone: PineconeBlock,
   postgresql: PostgreSQLBlock,

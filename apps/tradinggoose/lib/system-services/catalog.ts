@@ -3,6 +3,7 @@ import {
   COPILOT_RUNTIME_MODE_DEFAULT,
 } from '@/lib/copilot/agent/constants'
 import { MARKET_API_URL_DEFAULT } from '@/lib/market/client/constants'
+import { OPENCODE_BASE_URL_DEFAULT, OPENCODE_DEFAULT_AGENT } from '@/lib/opencode/constants'
 import { MINIMAX_API_BASE_URL_DEFAULT } from '@/providers/ai/minimax/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 
@@ -464,6 +465,48 @@ export const SYSTEM_SERVICE_DEFINITIONS: SystemServiceDefinition[] = [
         type: 'url',
         defaultValue: 'http://localhost:11434',
         envVar: 'OLLAMA_URL',
+      },
+    ],
+  },
+  {
+    id: 'opencode',
+    displayName: 'OpenCode',
+    description:
+      'Address and optional basic-auth credentials for a self-hosted OpenCode agent server.',
+    credentialFields: [
+      {
+        key: 'username',
+        label: 'Username',
+        description: 'Basic-auth username, if the OpenCode server is behind one.',
+        required: false,
+        envVar: 'OPENCODE_USERNAME',
+      },
+      {
+        key: 'password',
+        label: 'Password',
+        description: 'Basic-auth password, if the OpenCode server is behind one.',
+        required: false,
+        envVar: 'OPENCODE_PASSWORD',
+      },
+    ],
+    settingFields: [
+      {
+        key: 'baseUrl',
+        label: 'Base URL',
+        description:
+          'OpenCode API host. From inside a container this must be reachable there — ' +
+          'host.docker.internal, not localhost.',
+        type: 'url',
+        defaultValue: OPENCODE_BASE_URL_DEFAULT,
+        envVar: 'OPENCODE_BASE_URL',
+      },
+      {
+        key: 'defaultAgent',
+        label: 'Default Agent',
+        description: 'Agent used when a block does not name one. See GET /agent on the server.',
+        type: 'text',
+        defaultValue: OPENCODE_DEFAULT_AGENT,
+        envVar: 'OPENCODE_AGENT',
       },
     ],
   },

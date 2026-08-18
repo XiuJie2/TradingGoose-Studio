@@ -1,4 +1,5 @@
 import { parseCopilotRuntimeMode } from '@/lib/copilot/agent/constants'
+import { OPENCODE_BASE_URL_DEFAULT, OPENCODE_DEFAULT_AGENT } from '@/lib/opencode/constants'
 import { MINIMAX_API_BASE_URL_DEFAULT } from '@/providers/ai/minimax/constants'
 import { NVIDIA_API_BASE_URL_DEFAULT } from '@/providers/ai/nvidia/constants'
 import { resolveSystemServiceConfig, resolveSystemServiceSettingsConfig } from './service'
@@ -123,6 +124,13 @@ export const resolveMarketApiServiceConfig = createServiceResolver(
 
 export const resolveOllamaServiceConfig = createServiceResolver('ollama', (config) => ({
   baseUrl: asString(config.baseUrl) ?? 'http://localhost:11434',
+}))
+
+export const resolveOpenCodeServiceConfig = createServiceResolver('opencode', (config) => ({
+  baseUrl: asString(config.baseUrl) ?? OPENCODE_BASE_URL_DEFAULT,
+  defaultAgent: asString(config.defaultAgent) ?? OPENCODE_DEFAULT_AGENT,
+  username: asString(config.username),
+  password: asString(config.password),
 }))
 
 export const resolveVllmServiceConfig = createServiceResolver('vllm', readApiKeyAndBaseUrlConfig)

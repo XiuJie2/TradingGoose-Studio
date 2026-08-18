@@ -26,6 +26,11 @@ services:
       - OLLAMA_URL=${OLLAMA_URL:-http://localhost:11434}
       - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:?set NEXT_PUBLIC_SOCKET_URL in .env}
       - INTERNAL_SOCKET_URL=${INTERNAL_SOCKET_URL:-http://realtime:3002}
+      - OPENCODE_BASE_URL=${OPENCODE_BASE_URL:-}
+      - OPENCODE_USERNAME=${OPENCODE_USERNAME:-}
+      - OPENCODE_PASSWORD=${OPENCODE_PASSWORD:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     depends_on:
       redis:
         condition: service_healthy
