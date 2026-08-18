@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getBlocksMetadataServerTool } from '@/lib/copilot/tools/server/blocks/get-blocks-metadata'
+import { parseGraphOnlyWorkflowMermaid } from '@/lib/workflows/studio-workflow-mermaid'
 
 const mockGetOAuthProviderAvailability = vi.hoisted(() => vi.fn())
 
@@ -185,12 +186,17 @@ describe('getBlocksMetadataServerTool', () => {
     )
 
     expect(result.metadata.condition?.mermaidContract.renderKind).toBe('condition')
-    expect(result.metadata.input_trigger?.mermaidExamples.minimalDocument).toContain(
-      '"inputFormat"'
-    )
-    expect(result.metadata.input_trigger?.mermaidExamples.minimalDocument).not.toContain(
-      '"inputSchema"'
-    )
+
+    // The example must be something `edit_workflow` will accept. It used to embed
+    // block config — `subBlocks.inputFormat` and the TG_BLOCK comment carrying it
+    // — which that tool rejects outright, so a model copying the documented shape
+    // was refused. Block config is still described, in the `subBlocks` field
+    // asserted below, which is what `edit_workflow_block` consumes.
+    const inputTriggerExample = result.metadata.input_trigger?.mermaidExamples.minimalDocument ?? ''
+    expect(inputTriggerExample).not.toContain('subBlocks.')
+    expect(inputTriggerExample).not.toContain('%% TG_')
+    expect(inputTriggerExample).not.toContain('"inputSchema"')
+    expect(() => parseGraphOnlyWorkflowMermaid(inputTriggerExample, {})).not.toThrow()
     expect(
       result.metadata.input_trigger?.subBlocks?.find((subBlock) => subBlock.id === 'inputFormat')
         ?.description
