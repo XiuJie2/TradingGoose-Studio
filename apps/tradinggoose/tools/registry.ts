@@ -129,6 +129,7 @@ import {
 } from '@/tools/notion'
 import { onedriveCreateFolderTool, onedriveListTool, onedriveUploadTool } from '@/tools/onedrive'
 import { imageTool, embeddingsTool as openAIEmbeddings } from '@/tools/openai'
+import { opencodePromptTool } from '@/tools/opencode'
 import {
   outlookDraftTool,
   outlookForwardTool,
@@ -444,6 +445,7 @@ export const tools: Record<string, ToolConfig> = {
   google_sheets_write: googleSheetsWriteTool,
   google_sheets_update: googleSheetsUpdateTool,
   google_sheets_append: googleSheetsAppendTool,
+  opencode_prompt: opencodePromptTool,
   perplexity_chat: perplexityChatTool,
   confluence_retrieve: confluenceRetrieveTool,
   confluence_update: confluenceUpdateTool,

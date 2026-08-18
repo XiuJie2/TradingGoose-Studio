@@ -1198,6 +1198,28 @@ export function YouTubeIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+export function OpenCodeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      width='1em'
+      height='1em'
+      viewBox='0 0 24 24'
+      fill='none'
+      xmlns='http://www.w3.org/2000/svg'
+      {...props}
+    >
+      <rect x='2' y='3.5' width='20' height='17' rx='2.5' stroke='currentColor' strokeWidth='1.8' />
+      <path
+        d='M7 9.5 9.75 12 7 14.5M12.5 15h4.5'
+        stroke='currentColor'
+        strokeWidth='1.8'
+        strokeLinecap='round'
+        strokeLinejoin='round'
+      />
+    </svg>
+  )
+}
+
 export function PerplexityIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg width='1em' height='1em' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' {...props}>
