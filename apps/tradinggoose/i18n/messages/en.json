@@ -3392,6 +3392,7 @@
           "neo4j": "Neo4j",
           "notion": "Notion",
           "onedrive": "OneDrive",
+          "opencode": "OpenCode",
           "pinecone": "Pinecone",
           "pipedrive": "Pipedrive",
           "polymarket": "Polymarket",
@@ -3547,6 +3548,7 @@
           "neo4j": "Connect to Neo4j graph database",
           "notion": "Manage Notion pages",
           "onedrive": "Create, upload, and list files",
+          "opencode": "Run a prompt on a self-hosted OpenCode agent",
           "pinecone": "Use Pinecone vector database",
           "pipedrive": "Interact with Pipedrive CRM",
           "polymarket": "Access prediction markets data from Polymarket",
@@ -3611,7 +3613,8 @@
           "stagehand_agent": "Integrate Stagehand Agent into the workflow. Can navigate the web and perform tasks.",
           "evaluator": "This is a core workflow block. Assess content quality using customizable evaluation metrics and scoring criteria. Create objective evaluation frameworks with numeric scoring to measure performance across multiple dimensions.",
           "mcp": "Integrate MCP into the workflow. Can execute tools from MCP servers configured in the workspace dashboard widgets.",
-          "workflow_input": "Execute another child workflow and map variables to its Input Form Trigger schema. Helps with modularizing workflows."
+          "workflow_input": "Execute another child workflow and map variables to its Input Form Trigger schema. Helps with modularizing workflows.",
+          "opencode": "Send a prompt to an OpenCode agent server and use its reply in the workflow. Unlike a plain chat model, an OpenCode agent has tools — it can read files, fetch pages and run commands on its host — so it is suited to research and analysis that needs to go and get things. The server address and credentials are configured once in Admin > Services, not per block."
         },
         "toolParameters": {
           "gmail": {
@@ -10854,6 +10857,25 @@
             "values": {
               "placeholder": "Enter values as JSON array of arrays (e.g., [[\"A1\",\"B1\"],[\"A2\",\"B2\"]]) or an array of objects",
               "title": "Values"
+            }
+          },
+          "opencode": {
+            "prompt": {
+              "title": "Prompt",
+              "placeholder": "What should the agent do?"
+            },
+            "agent": {
+              "title": "Agent",
+              "description": "Agent name on the OpenCode server."
+            },
+            "sessionId": {
+              "title": "Session ID",
+              "placeholder": "Leave empty to start a new session",
+              "description": "Continue an existing session so the agent keeps its context."
+            },
+            "directory": {
+              "title": "Working Directory",
+              "placeholder": "Path on the OpenCode host, e.g. /home/user/project"
             }
           },
           "openai": {
