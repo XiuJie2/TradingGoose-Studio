@@ -15,6 +15,7 @@ vi.mock('@/lib/system-services/runtime', () => ({ resolveOpenCodeServiceConfig }
 
 import {
   createOpenCodeSession,
+  listOpenCodeAgents,
   OpenCodeError,
   promptOpenCodeSession,
   resolveOpenCodeConnection,
@@ -174,5 +175,56 @@ describe('createOpenCodeSession', () => {
     fetchMock.mockResolvedValue(jsonResponse({}))
 
     await expect(createOpenCodeSession(connection)).rejects.toBeInstanceOf(OpenCodeError)
+  })
+})
+
+describe('listOpenCodeAgents', () => {
+  const fetchMock = vi.fn()
+
+  beforeEach(() => {
+    fetchMock.mockReset()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('maps the server listing and drops entries with no name', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        { name: 'plan', description: 'Plan mode. Disallows all edit tools', native: true },
+        { name: 'oracle', description: 'Read-only consultation agent.' },
+        { description: 'nameless entry that cannot be selected' },
+      ])
+    )
+
+    const agents = await listOpenCodeAgents(connection)
+
+    expect(fetchMock.mock.calls[0][0]).toBe('http://opencode.test:4096/agent')
+    expect(agents).toEqual([
+      { name: 'plan', description: 'Plan mode. Disallows all edit tools', native: true },
+      { name: 'oracle', description: 'Read-only consultation agent.', native: false },
+    ])
+  })
+
+  it('names the status and content type when the Base URL reaches the web UI', async () => {
+    // Any unmatched path on the OpenCode web UI answers 200 with the SPA shell,
+    // so a Base URL pointing at the UI instead of the API would otherwise fail
+    // as an unreadable "Unexpected token <".
+    fetchMock.mockResolvedValue(
+      new Response('<!doctype html><html><body>opencode</body></html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      })
+    )
+
+    await expect(listOpenCodeAgents(connection)).rejects.toThrow(/200 text\/html/)
+  })
+
+  it('rejects a listing that is not an array', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ agents: [] }))
+
+    await expect(listOpenCodeAgents(connection)).rejects.toBeInstanceOf(OpenCodeError)
   })
 })
