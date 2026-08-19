@@ -131,6 +131,45 @@ async function requestOpenCode(
   return response
 }
 
+export interface OpenCodeAgent {
+  name: string
+  description: string | null
+  native: boolean
+}
+
+/**
+ * Lists the agents the configured server defines.
+ *
+ * Agent names are install-specific — a server can define any number of them —
+ * so the block reads the live list instead of carrying a hardcoded one that
+ * would be wrong on every deployment but the one it was written against.
+ */
+export async function listOpenCodeAgents(connection: OpenCodeConnection): Promise<OpenCodeAgent[]> {
+  const response = await requestOpenCode(
+    connection,
+    '/agent',
+    { method: 'GET' },
+    'agent listing',
+    30_000
+  )
+
+  const agents = await decodeJson<unknown>(response, 'agent listing')
+  if (!Array.isArray(agents)) {
+    throw new OpenCodeError('OpenCode agent listing did not return an array')
+  }
+
+  return agents
+    .map((entry) => {
+      const agent = entry as { name?: unknown; description?: unknown; native?: unknown }
+      return {
+        name: typeof agent.name === 'string' ? agent.name : '',
+        description: typeof agent.description === 'string' ? agent.description : null,
+        native: agent.native === true,
+      }
+    })
+    .filter((agent) => agent.name.length > 0)
+}
+
 export async function createOpenCodeSession(
   connection: OpenCodeConnection,
   directory?: string

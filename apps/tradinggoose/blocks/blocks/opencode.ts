@@ -28,13 +28,28 @@ export const OpenCodeBlock: BlockConfig<OpenCodePromptResponse> = {
     {
       id: 'agent',
       title: 'Agent',
-      type: 'short-input',
+      type: 'dropdown',
       layout: 'half',
       placeholder: OPENCODE_DEFAULT_AGENT,
+      enableSearch: true,
       // Agent names are install-specific — a server can define any number of
-      // them — so this is free text rather than a fixed list that would go
-      // stale against every deployment but the one it was written for.
-      // `GET /agent` on the OpenCode server lists what is available.
+      // them — so the options come from the configured server's own `GET /agent`
+      // rather than a hardcoded list that would be wrong on every deployment but
+      // the one it was written against. Leaving this empty uses the default agent
+      // set in Admin > Services.
+      fetchOptions: async () => {
+        const response = await fetch('/api/tools/opencode/agents')
+        const payload = await response.json().catch(() => null)
+
+        if (!response.ok || !payload?.success) {
+          throw new Error(payload?.error ?? 'Could not list agents on the OpenCode server')
+        }
+
+        return (payload.agents as Array<{ name: string }>).map((agent) => ({
+          id: agent.name,
+          label: agent.name,
+        }))
+      },
     },
     {
       id: 'sessionId',
