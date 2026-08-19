@@ -29,6 +29,7 @@ services:
       - OPENCODE_BASE_URL=${OPENCODE_BASE_URL:-}
       - OPENCODE_USERNAME=${OPENCODE_USERNAME:-}
       - OPENCODE_PASSWORD=${OPENCODE_PASSWORD:-}
+      - CRON_SECRET=${CRON_SECRET:-}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     depends_on:
@@ -46,6 +47,55 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  # The helm chart drives the scheduled endpoints with Kubernetes CronJobs; a
+  # compose deployment had nothing calling them, so scheduled workflows never
+  # fired. Same contract: an authenticated request per tick.
+  cron:
+    image: alpine:3.21
+    restart: unless-stopped
+    environment:
+      - CRON_SECRET=${CRON_SECRET:-}
+      - APP_URL=${INTERNAL_APP_URL:-http://tradinggoose:3000}
+    depends_on:
+      tradinggoose:
+        condition: service_healthy
+    command:
+      - /bin/sh
+      - -euc
+      - |
+        if [ -z "$${CRON_SECRET}" ]; then
+          echo "CRON_SECRET is empty: set it in .env, or scheduled workflows will not run." >&2
+          echo "The app rejects unauthenticated cron calls, so starting without it is pointless." >&2
+          exit 1
+        fi
+
+        # busybox crond hands jobs a minimal environment, so the secret goes in a
+        # file the runner sources. Passing it on the cron command line would put
+        # it in `ps` output and in crond's own log lines.
+        umask 077
+        printf 'CRON_SECRET=%s\nAPP_URL=%s\n' "$${CRON_SECRET}" "$${APP_URL}" > /etc/tg-cron.env
+
+        cat > /usr/local/bin/tg-cron <<'RUNNER'
+        #!/bin/sh
+        . /etc/tg-cron.env
+        if ! wget -q -O /dev/null --timeout=60 \
+          --header="Authorization: Bearer $${CRON_SECRET}" \
+          --header="User-Agent: tradinggoose-compose-cron" \
+          "$${APP_URL}$${1}"; then
+          echo "cron $${1} failed (exit $$?)" >&2
+        fi
+        RUNNER
+        chmod +x /usr/local/bin/tg-cron
+
+        mkdir -p /etc/crontabs
+        cat > /etc/crontabs/root <<'CRONTAB'
+        * * * * * /usr/local/bin/tg-cron /api/schedules/execute
+        0 3 * * * /usr/local/bin/tg-cron /api/webhooks/cleanup/idempotency
+        CRONTAB
+
+        echo "cron ready: schedules every minute, idempotency cleanup at 03:00"
+        exec crond -f -l 8
 
   realtime:
     image: ${IMAGE_REGISTRY:-ghcr.io/xiujie2}/realtime:${IMAGE_TAG:?set IMAGE_TAG in .env}
