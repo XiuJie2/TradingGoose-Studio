@@ -139,7 +139,7 @@ vi.mock('@/lib/trigger/settings', () => ({
   },
 }))
 
-vi.mock('@/background/pending-execution-drain', () => ({
+vi.mock('@/background/pending-execution-runner', () => ({
   drainPendingExecutionsForBillingScope: drainPendingExecutionsForBillingScopeMock,
 }))
 
@@ -186,6 +186,35 @@ describe('enqueuePendingExecution', () => {
         insert: vi.fn(() => txInsertChain),
       })
     )
+  })
+
+  it('starts local drain when Trigger.dev is disabled outside local development', async () => {
+    // A self-hosted deployment runs NODE_ENV=production with no Trigger.dev, which used
+    // to throw before anything was queued — every workflow run in such a deployment was
+    // a silent no-op with an empty pending_execution table to show for it.
+    isDevMock.mockReturnValue(false)
+
+    const result = await enqueuePendingExecution({
+      executionType: 'workflow',
+      pendingExecutionId: 'pending-prod-1',
+      workflowId: 'workflow-1',
+      workspaceId: 'workspace-1',
+      userId: 'user-1',
+      source: 'workflow_api',
+      payload: {
+        executionId: 'pending-prod-1',
+      },
+    })
+
+    expect(result).toEqual({
+      pendingExecutionId: 'pending-prod-1',
+      billingScopeId: 'user-1',
+      inserted: true,
+    })
+    expect(triggerMock).not.toHaveBeenCalled()
+    expect(drainPendingExecutionsForBillingScopeMock).toHaveBeenCalledWith({
+      billingScopeId: 'user-1',
+    })
   })
 
   it('starts local drain when Trigger.dev is disabled in local development', async () => {

@@ -1,5 +1,4 @@
 import { tasks } from '@trigger.dev/sdk'
-import { isDev } from '@/lib/environment'
 import { createLogger } from '@/lib/logs/console/logger'
 import { getTriggerExecutionState, TriggerExecutionUnavailableError } from '@/lib/trigger/settings'
 
@@ -28,9 +27,11 @@ export async function triggerPendingExecutionDrain(params: {
     return
   }
 
-  if (!triggerState.triggerDevEnabled && isDev) {
+  // No Trigger.dev: drain in-process. Imported from the runner rather than the task
+  // module so this path never loads `@trigger.dev/sdk`.
+  if (!triggerState.triggerDevEnabled) {
     const { drainPendingExecutionsForBillingScope } = await import(
-      '@/background/pending-execution-drain'
+      '@/background/pending-execution-runner'
     )
     void drainPendingExecutionsForBillingScope({ billingScopeId: params.billingScopeId }).catch(
       (error) => {
@@ -44,9 +45,7 @@ export async function triggerPendingExecutionDrain(params: {
     return
   }
 
-  throw new TriggerExecutionUnavailableError(
-    'Queued server execution requires Trigger.dev outside local development.'
-  )
+  throw new TriggerExecutionUnavailableError()
 }
 
 export async function wakePendingExecutionDrain(params: {

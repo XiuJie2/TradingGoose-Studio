@@ -2,7 +2,6 @@ import { db } from '@tradinggoose/db'
 import { pendingExecution, workflowExecutionLogs } from '@tradinggoose/db/schema'
 import { and, asc, eq, lte, ne, sql } from 'drizzle-orm'
 import type { BillingTierRecord } from '@/lib/billing/tiers'
-import { isDev } from '@/lib/environment'
 import {
   resolveServerExecutionBillingContext,
   resolveServerExecutionBillingTierForScope,
@@ -138,10 +137,12 @@ export async function enqueuePendingExecution(
     )
   }
 
-  if (!triggerState.executionEnabled && (triggerState.triggerDevEnabled || !isDev)) {
-    throw new TriggerExecutionUnavailableError(
-      'Queued server execution requires Trigger.dev outside local development.'
-    )
+  // Trigger.dev off means the deployment drains its own queue in-process (see
+  // pending-execution-drain-wake), which is the only execution backend a self-hosted
+  // stack has. Only a deployment that asked for Trigger.dev and cannot reach it is a
+  // misconfiguration, and that already threw above.
+  if (triggerState.triggerDevEnabled && !triggerState.executionEnabled) {
+    throw new TriggerExecutionUnavailableError()
   }
 
   let inserted = false
