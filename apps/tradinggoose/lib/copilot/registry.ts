@@ -795,6 +795,23 @@ const WatchlistDocumentEnvelope = EntityDocumentEnvelopeBase.extend({
   documentFormat: z.literal(WATCHLIST_DOCUMENT_FORMAT),
 })
 
+/**
+ * The tickers behind a watchlist's listing identities, resolved from the market
+ * service. They travel beside the document rather than inside it: the document
+ * schema is strict and an edit sends the same document back, so an extra key on
+ * an item would fail validation on write.
+ */
+const WatchlistListingSummary = z.object({
+  listing: z.object({
+    listing_id: z.string(),
+    base_id: z.string(),
+    quote_id: z.string(),
+    listing_type: z.string(),
+  }),
+  symbol: z.string().nullable(),
+  name: z.string().nullable(),
+})
+
 const DocumentDiffReviewMetadata = z.object({
   requiresReview: z.literal(true).optional(),
   reviewBaseStateHash: z.string().optional(),
@@ -1198,6 +1215,8 @@ export const ToolResultSchemas = {
   }),
   read_watchlist: WatchlistDocumentEnvelope.extend({
     entityKind: z.literal('watchlist'),
+    listings: z.array(WatchlistListingSummary),
+    listingsError: z.string().optional(),
   }),
   create_watchlist: WatchlistDocumentMutationResult,
   edit_watchlist: WatchlistDocumentMutationResult,

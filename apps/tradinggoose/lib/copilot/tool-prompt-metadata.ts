@@ -345,7 +345,7 @@ export const TOOL_PROMPT_METADATA: Record<ToolId, ToolPromptMetadata> = {
     entityKind: 'watchlist',
   },
   read_watchlist: {
-    description: `Return one watchlist by \`entityId\` as an editable document payload with \`entityDocument\` and \`documentFormat\`. ${WATCHLIST_DOCUMENT_GUIDANCE}`,
+    description: `Return one watchlist by \`entityId\` as an editable document payload with \`entityDocument\` and \`documentFormat\`. The document stores listing identities, not tickers, so \`listings\` accompanies it with the resolved \`symbol\` and \`name\` for each one; answer questions about which instruments a watchlist holds from \`listings\`, and treat a null symbol as a listing the market service could not resolve rather than one that is absent. ${WATCHLIST_DOCUMENT_GUIDANCE}`,
     kind: 'read',
     entityKind: 'watchlist',
   },
