@@ -91,10 +91,11 @@ services:
         mkdir -p /etc/crontabs
         cat > /etc/crontabs/root <<'CRONTAB'
         * * * * * /usr/local/bin/tg-cron /api/schedules/execute
+        * * * * * /usr/local/bin/tg-cron /api/webhooks/poll/rss
         0 3 * * * /usr/local/bin/tg-cron /api/webhooks/cleanup/idempotency
         CRONTAB
 
-        echo "cron ready: schedules every minute, idempotency cleanup at 03:00"
+        echo "cron ready: schedules and RSS every minute, idempotency cleanup at 03:00"
         exec crond -f -l 8
 
   realtime:
