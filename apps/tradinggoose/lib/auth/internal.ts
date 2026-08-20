@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { jwtVerify, SignJWT } from 'jose'
 import { type NextRequest, NextResponse } from 'next/server'
 import { env } from '@/lib/env'
@@ -110,14 +111,41 @@ export async function verifyInternalTokenDetailed(
   }
 }
 
+function isExpectedCronToken(provided: string, expected: string): boolean {
+  const providedBytes = Buffer.from(provided)
+  const expectedBytes = Buffer.from(expected)
+
+  // timingSafeEqual throws on a length mismatch, which would leak the secret's
+  // length through the difference between a thrown error and a false result.
+  if (providedBytes.length !== expectedBytes.length) {
+    return false
+  }
+
+  return timingSafeEqual(providedBytes, expectedBytes)
+}
+
 /**
  * Verify CRON authentication for scheduled API endpoints
  * Returns null if authorized, or a NextResponse with error if unauthorized
  */
 export function verifyCronAuth(request: NextRequest, context?: string): NextResponse | null {
   const authHeader = request.headers.get('authorization')
-  const expectedAuth = `Bearer ${env.CRON_SECRET}`
-  if (authHeader !== expectedAuth) {
+  const secret = env.CRON_SECRET?.trim()
+
+  // CRON_SECRET is optional in the env schema, and interpolating an unset one
+  // produced the literal string 'Bearer undefined' as the expected header —
+  // which any caller could simply send. A deployment without the secret has no
+  // cron caller to authenticate, so the endpoints stay closed instead.
+  if (!secret) {
+    const contextInfo = context ? ` for ${context}` : ''
+    logger.warn(`CRON endpoint called${contextInfo} but CRON_SECRET is not configured`, {
+      context,
+    })
+
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  if (!authHeader || !isExpectedCronToken(authHeader, `Bearer ${secret}`)) {
     const contextInfo = context ? ` for ${context}` : ''
     logger.warn(`Unauthorized CRON access attempt${contextInfo}`, {
       providedAuth: authHeader,

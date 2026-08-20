@@ -8,7 +8,49 @@ afterEach(() => {
   } else {
     process.env.INTERNAL_API_SECRET = originalInternalSecret
   }
+  vi.unstubAllEnvs()
   vi.resetModules()
+})
+
+async function callVerifyCronAuth(authHeader?: string) {
+  const { verifyCronAuth } = await import('./internal')
+  const headers = new Headers()
+  if (authHeader !== undefined) {
+    headers.set('authorization', authHeader)
+  }
+
+  return verifyCronAuth({ headers } as never, 'test endpoint')
+}
+
+describe('verifyCronAuth', () => {
+  it('rejects every caller when CRON_SECRET is not configured', async () => {
+    vi.stubEnv('CRON_SECRET', undefined)
+    vi.resetModules()
+
+    // The expected header used to be built by interpolation, so an unset secret
+    // made `Bearer undefined` the valid credential for every cron endpoint.
+    expect(await callVerifyCronAuth('Bearer undefined')).not.toBeNull()
+    expect(await callVerifyCronAuth('Bearer ')).not.toBeNull()
+    expect(await callVerifyCronAuth()).not.toBeNull()
+  })
+
+  it('rejects a blank CRON_SECRET the same way', async () => {
+    vi.stubEnv('CRON_SECRET', '   ')
+    vi.resetModules()
+
+    expect(await callVerifyCronAuth('Bearer    ')).not.toBeNull()
+    expect(await callVerifyCronAuth('Bearer undefined')).not.toBeNull()
+  })
+
+  it('accepts only the configured secret', async () => {
+    vi.stubEnv('CRON_SECRET', 'super-secret-cron-value')
+    vi.resetModules()
+
+    expect(await callVerifyCronAuth('Bearer super-secret-cron-value')).toBeNull()
+    expect(await callVerifyCronAuth('Bearer super-secret-cron-valu')).not.toBeNull()
+    expect(await callVerifyCronAuth('Bearer undefined')).not.toBeNull()
+    expect(await callVerifyCronAuth()).not.toBeNull()
+  })
 })
 
 describe('internal auth tokens', () => {
