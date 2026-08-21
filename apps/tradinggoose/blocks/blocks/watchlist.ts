@@ -53,7 +53,11 @@ export const WatchlistBlock: BlockConfig = {
     watchlists: { type: 'array', description: 'Watchlist records.' },
     watchlist: { type: 'json', description: 'Watchlist record.' },
     items: { type: 'array', description: 'Watchlist items in display order.' },
-    listings: { type: 'array', description: 'Listing items in the watchlist.' },
+    listings: {
+      type: 'array',
+      description:
+        'Listing items in the watchlist. Each carries `symbol` and `name` alongside the stored `listing` identity; both are null when the market service could not resolve that listing.',
+    },
     sections: { type: 'array', description: 'Section/category items in the watchlist.' },
   },
 }
