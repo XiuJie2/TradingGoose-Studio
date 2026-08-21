@@ -174,11 +174,13 @@ async function executeWatchlistTool(
   if (!watchlistId) throw new Error('watchlistId is required')
   const { getWatchlist } = await import('@/lib/watchlists/operations')
   const watchlist = await getWatchlist({ workspaceId }, watchlistId, isDeployedContext)
-  const listings = watchlist.items.filter((item) => item.type === 'listing')
-  const sections = watchlist.items.filter((item) => item.type === 'section')
+  const { attachWatchlistListingSymbols } = await import('@/lib/watchlists/listing-symbols')
+  const items = await attachWatchlistListingSymbols(watchlist.items)
+  const listings = items.filter((item) => item.type === 'listing')
+  const sections = items.filter((item) => item.type === 'section')
   return {
     success: true,
-    output: { watchlist, items: watchlist.items, listings, sections },
+    output: { watchlist: { ...watchlist, items }, items, listings, sections },
   }
 }
 
