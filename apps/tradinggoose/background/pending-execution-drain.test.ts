@@ -53,7 +53,7 @@ vi.mock('@/lib/logs/console/logger', () => ({
   })),
 }))
 
-vi.mock('./knowledge-processing', () => ({
+vi.mock('./knowledge-processing-runner', () => ({
   dispatchQueuedDocumentProcessingJob: dispatchQueuedDocumentProcessingJobMock,
   failQueuedDocumentProcessingJob: failQueuedDocumentProcessingJobMock,
 }))

@@ -7,7 +7,7 @@ import { createLogger } from '@/lib/logs/console/logger'
 import {
   dispatchQueuedDocumentProcessingJob,
   failQueuedDocumentProcessingJob,
-} from './knowledge-processing'
+} from './knowledge-processing-runner'
 import { executeMonitorJob, isMonitorExecutionPayload } from './monitor-execution'
 import { executeScheduleJob, isScheduleExecutionPayload } from './schedule-execution'
 import { executeWebhookJob, isWebhookExecutionPayload } from './webhook-execution'

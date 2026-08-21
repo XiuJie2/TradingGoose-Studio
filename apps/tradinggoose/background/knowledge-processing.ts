@@ -1,67 +1,17 @@
 import { task } from '@trigger.dev/sdk'
 import { env } from '@/lib/env'
-import {
-  markDocumentProcessingFailed,
-  processDocumentAsync,
-} from '@/lib/knowledge/documents/service'
-import { createLogger } from '@/lib/logs/console/logger'
+import { executeDocumentProcessingJob } from './knowledge-processing-runner'
 
-const logger = createLogger('KnowledgeProcessing')
+export {
+  type DocumentProcessingPayload,
+  dispatchQueuedDocumentProcessingJob,
+  failQueuedDocumentProcessingJob,
+  isDocumentProcessingPayload,
+} from './knowledge-processing-runner'
 
 const envNumber = (value: unknown, fallback: number, min = 1) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) && parsed >= min ? parsed : fallback
-}
-
-export type DocumentProcessingPayload = {
-  knowledgeBaseId: string
-  documentId: string
-  userId: string
-  workspaceId: string
-  docData: {
-    filename: string
-    fileUrl: string
-    fileSize: number
-    mimeType: string
-  }
-  processingOptions: {
-    chunkSize: number
-    minCharactersPerChunk: number
-    chunkOverlap: number
-  }
-  requestId: string
-}
-
-function isDocumentProcessingPayload(value: unknown): value is DocumentProcessingPayload {
-  if (!value || typeof value !== 'object') {
-    return false
-  }
-
-  const candidate = value as Record<string, unknown>
-  return (
-    typeof candidate.knowledgeBaseId === 'string' &&
-    typeof candidate.documentId === 'string' &&
-    typeof candidate.userId === 'string' &&
-    typeof candidate.workspaceId === 'string' &&
-    typeof candidate.requestId === 'string'
-  )
-}
-
-async function executeDocumentProcessingJob(payload: DocumentProcessingPayload) {
-  const { knowledgeBaseId, documentId, docData, processingOptions, requestId } = payload
-
-  logger.info(`[${requestId}] Starting document pending execution: ${docData.filename}`)
-
-  try {
-    await processDocumentAsync(knowledgeBaseId, documentId, docData, processingOptions)
-
-    logger.info(
-      `[${requestId}] Successfully completed document pending execution: ${docData.filename}`
-    )
-  } catch (error) {
-    logger.error(`[${requestId}] Failed document pending execution: ${docData.filename}`, error)
-    throw error
-  }
 }
 
 export const processDocument = task({
@@ -80,19 +30,3 @@ export const processDocument = task({
   },
   run: executeDocumentProcessingJob,
 })
-
-export async function dispatchQueuedDocumentProcessingJob(payload: unknown) {
-  if (!isDocumentProcessingPayload(payload)) {
-    throw new Error('Invalid document pending payload')
-  }
-
-  await processDocument.triggerAndWait(payload).unwrap()
-}
-
-export async function failQueuedDocumentProcessingJob(payload: unknown, errorMessage: string) {
-  if (!isDocumentProcessingPayload(payload)) {
-    return
-  }
-
-  await markDocumentProcessingFailed(payload.documentId, errorMessage)
-}
